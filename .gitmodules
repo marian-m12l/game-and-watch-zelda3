@@ -1,0 +1,3 @@
+[submodule "zelda3"]
+	path = zelda3
+	url = ./zelda3
