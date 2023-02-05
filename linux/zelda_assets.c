@@ -1,0 +1,1 @@
+../Core/Src/porting/zelda_assets.c

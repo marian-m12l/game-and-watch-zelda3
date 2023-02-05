@@ -25,6 +25,10 @@
 #include "buttons.h"
 #include "flash.h"
 #include "lcd.h"
+
+#include "porting.h"
+#include "zelda_assets.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
