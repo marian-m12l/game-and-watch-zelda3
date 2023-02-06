@@ -58,14 +58,50 @@ _estack = 0x20020000;    /* end of RAM */
 _Min_Heap_Size = 0x200;      /* required amount of heap  */
 _Min_Stack_Size = 0x400; /* required amount of stack */
 
+
+
+/* Useful for scripts */
+__NULLPTR_LENGTH__  = 0x100;
+__ITCMRAM_LENGTH__  = 64K;
+__DTCMRAM_LENGTH__  = 128K;
+__RAM_UC_LENGTH__   = 300K;
+__RAM_CORE_LENGTH__ = 68K;
+__RAM_EMU_LENGTH__  = 1024K - __RAM_UC_LENGTH__ - __RAM_CORE_LENGTH__;
+__AHBRAM_LENGTH__   = 128K;
+__FLASH_LENGTH__    = 128K;
+
+
+
+__INTFLASH__ = DEFINED(__INTFLASH__) ? __INTFLASH__ : 0x08000000;
+
+
+__EXTFLASH_TOTAL_LENGTH__ = DEFINED(__EXTFLASH_TOTAL_LENGTH__) ? __EXTFLASH_TOTAL_LENGTH__ : 1024K;
+__EXTFLASH_OFFSET__ = DEFINED(__EXTFLASH_OFFSET__) ? __EXTFLASH_OFFSET__ : 0;
+__EXTFLASH_BASE__ = 0x90000000;  /* Beginning of addressable extflash addresses */
+__EXTFLASH_START__ = __EXTFLASH_BASE__ + __EXTFLASH_OFFSET__;  /* Beginning of where we're going to store emulator and rom data */
+
+__EXTFLASH_LENGTH__ = __EXTFLASH_TOTAL_LENGTH__;
+
+
+__RAM_START__       = 0x24000000;
+__RAM_UC_START__    = __RAM_START__;
+__RAM_CORE_START__  = __RAM_START__ + __RAM_UC_LENGTH__;
+__RAM_EMU_START__   = __RAM_CORE_START__ + __RAM_CORE_LENGTH__;
+
+__RAM_EMU_END__     = __RAM_EMU_START__ + __RAM_EMU_LENGTH__;
+
+
+
+
+
 /* Specify the memory areas */
 MEMORY
 {
   ITCMRAM  (xrw) : ORIGIN = 0x00000000, LENGTH = 64K
   DTCMRAM  (xrw) : ORIGIN = 0x20000000, LENGTH = 128K
   RAM      (xrw) : ORIGIN = 0x24000000, LENGTH = 1024K
-  FLASH    (xr ) : ORIGIN = 0x8000000,  LENGTH = 128K
-  EXTFLASH (xr ) : ORIGIN = 0x90000000, LENGTH = 1024K
+  FLASH    (xr ) : ORIGIN = __INTFLASH__,  LENGTH = __FLASH_LENGTH__
+  EXTFLASH (xr ) : ORIGIN = __EXTFLASH_START__,  LENGTH = __EXTFLASH_LENGTH__
 }
 
 /* Define output sections */
@@ -79,11 +115,174 @@ SECTIONS
     . = ALIGN(4);
   }  > RAM
 
+
+  __extflash_start__ = LOADADDR(._extflash);
+
   ._extflash :
   {
     . = ALIGN(4);
     _extflash = .;       /* define a global symbols to point at the external flash */
+
+    __extflash_data_start__ = .;
+    . = ALIGN(4);
+    *(.extflash_data)
+    . = ALIGN(4);
+    __extflash_data_end__ = .;
+
   } >EXTFLASH
+
+
+  /* zelda3 .text section in EXTFLASH */
+  .extflash_text :
+  {
+    . = ALIGN(4);
+
+    __extflash_text_start__ = .;
+
+    build/ancilla.o (.text)           /* .text sections (code) */
+    build/ancilla.o (.text*)          /* .text* sections (code) */
+    build/apu.o (.text)           /* .text sections (code) */
+    build/apu.o (.text*)          /* .text* sections (code) */
+    build/attract.o (.text)           /* .text sections (code) */
+    build/attract.o (.text*)          /* .text* sections (code) */
+    build/audio.o (.text)           /* .text sections (code) */
+    build/audio.o (.text*)          /* .text* sections (code) */
+    build/config.o (.text)           /* .text sections (code) */
+    build/config.o (.text*)          /* .text* sections (code) */
+    build/dma.o (.text)           /* .text sections (code) */
+    build/dma.o (.text*)          /* .text* sections (code) */
+    build/dsp.o (.text)           /* .text sections (code) */
+    build/dsp.o (.text*)          /* .text* sections (code) */
+    build/dungeon.o (.text)           /* .text sections (code) */
+    build/dungeon.o (.text*)          /* .text* sections (code) */
+    build/ending.o (.text)           /* .text sections (code) */
+    build/ending.o (.text*)          /* .text* sections (code) */
+    build/hud.o (.text)           /* .text sections (code) */
+    build/hud.o (.text*)          /* .text* sections (code) */
+    build/load_gfx.o (.text)           /* .text sections (code) */
+    build/load_gfx.o (.text*)          /* .text* sections (code) */
+    build/messaging.o (.text)           /* .text sections (code) */
+    build/messaging.o (.text*)          /* .text* sections (code) */
+    build/misc.o (.text)           /* .text sections (code) */
+    build/misc.o (.text*)          /* .text* sections (code) */
+    build/nmi.o (.text)           /* .text sections (code) */
+    build/nmi.o (.text*)          /* .text* sections (code) */
+    build/opus_decoder_amalgam.o (.text)           /* .text sections (code) */
+    build/opus_decoder_amalgam.o (.text*)          /* .text* sections (code) */
+    build/overlord.o (.text)           /* .text sections (code) */
+    build/overlord.o (.text*)          /* .text* sections (code) */
+    build/overworld.o (.text)           /* .text sections (code) */
+    build/overworld.o (.text*)          /* .text* sections (code) */
+    build/player.o (.text)           /* .text sections (code) */
+    build/player.o (.text*)          /* .text* sections (code) */
+    build/player_oam.o (.text)           /* .text sections (code) */
+    build/player_oam.o (.text*)          /* .text* sections (code) */
+    build/poly.o (.text)           /* .text sections (code) */
+    build/poly.o (.text*)          /* .text* sections (code) */
+    build/ppu.o (.text)           /* .text sections (code) */
+    build/ppu.o (.text*)          /* .text* sections (code) */
+    build/select_file.o (.text)           /* .text sections (code) */
+    build/select_file.o (.text*)          /* .text* sections (code) */
+    build/spc_player.o (.text)           /* .text sections (code) */
+    build/spc_player.o (.text*)          /* .text* sections (code) */
+    build/sprite.o (.text)           /* .text sections (code) */
+    build/sprite.o (.text*)          /* .text* sections (code) */
+    build/sprite_main.o (.text)           /* .text sections (code) */
+    build/sprite_main.o (.text*)          /* .text* sections (code) */
+    build/tagalong.o (.text)           /* .text sections (code) */
+    build/tagalong.o (.text*)          /* .text* sections (code) */
+    build/tile_detect.o (.text)           /* .text sections (code) */
+    build/tile_detect.o (.text*)          /* .text* sections (code) */
+    build/util.o (.text)           /* .text sections (code) */
+    build/util.o (.text*)          /* .text* sections (code) */
+    build/zelda_assets.o (.text)           /* .text sections (code) */
+    build/zelda_assets.o (.text*)          /* .text* sections (code) */
+    build/zelda_rtl.o (.text)           /* .text sections (code) */
+    build/zelda_rtl.o (.text*)          /* .text* sections (code) */
+    
+    . = ALIGN(4);
+    __extflash_text_end__ = .;
+    
+  } >EXTFLASH
+
+  /* zelda3 .rodata section in EXTFLASH */
+  .extflash_rodata :
+  {
+    . = ALIGN(4);
+
+    __extflash_rodata_start__ = .;
+
+    build/ancilla.o (.rodata)           /* .text sections (code) */
+    build/ancilla.o (.rodata*)          /* .text* sections (code) */
+    build/apu.o (.rodata)           /* .text sections (code) */
+    build/apu.o (.rodata*)          /* .text* sections (code) */
+    build/attract.o (.rodata)           /* .text sections (code) */
+    build/attract.o (.rodata*)          /* .text* sections (code) */
+    build/audio.o (.rodata)           /* .text sections (code) */
+    build/audio.o (.rodata*)          /* .text* sections (code) */
+    build/config.o (.rodata)           /* .text sections (code) */
+    build/config.o (.rodata*)          /* .text* sections (code) */
+    build/dma.o (.rodata)           /* .text sections (code) */
+    build/dma.o (.rodata*)          /* .text* sections (code) */
+    build/dsp.o (.rodata)           /* .text sections (code) */
+    build/dsp.o (.rodata*)          /* .text* sections (code) */
+    build/dungeon.o (.rodata)           /* .text sections (code) */
+    build/dungeon.o (.rodata*)          /* .text* sections (code) */
+    build/ending.o (.rodata)           /* .text sections (code) */
+    build/ending.o (.rodata*)          /* .text* sections (code) */
+    build/hud.o (.rodata)           /* .text sections (code) */
+    build/hud.o (.rodata*)          /* .text* sections (code) */
+    build/load_gfx.o (.rodata)           /* .text sections (code) */
+    build/load_gfx.o (.rodata*)          /* .text* sections (code) */
+    build/messaging.o (.rodata)           /* .text sections (code) */
+    build/messaging.o (.rodata*)          /* .text* sections (code) */
+    build/misc.o (.rodata)           /* .text sections (code) */
+    build/misc.o (.rodata*)          /* .text* sections (code) */
+    build/nmi.o (.rodata)           /* .text sections (code) */
+    build/nmi.o (.rodata*)          /* .text* sections (code) */
+    build/opus_decoder_amalgam.o (.rodata)           /* .text sections (code) */
+    build/opus_decoder_amalgam.o (.rodata*)          /* .text* sections (code) */
+    build/overlord.o (.rodata)           /* .text sections (code) */
+    build/overlord.o (.rodata*)          /* .text* sections (code) */
+    build/overworld.o (.rodata)           /* .text sections (code) */
+    build/overworld.o (.rodata*)          /* .text* sections (code) */
+    build/player.o (.rodata)           /* .text sections (code) */
+    build/player.o (.rodata*)          /* .text* sections (code) */
+    build/player_oam.o (.rodata)           /* .text sections (code) */
+    build/player_oam.o (.rodata*)          /* .text* sections (code) */
+    build/poly.o (.rodata)           /* .text sections (code) */
+    build/poly.o (.rodata*)          /* .text* sections (code) */
+    build/ppu.o (.rodata)           /* .text sections (code) */
+    build/ppu.o (.rodata*)          /* .text* sections (code) */
+    build/select_file.o (.rodata)           /* .text sections (code) */
+    build/select_file.o (.rodata*)          /* .text* sections (code) */
+    build/spc_player.o (.rodata)           /* .text sections (code) */
+    build/spc_player.o (.rodata*)          /* .text* sections (code) */
+    build/sprite.o (.rodata)           /* .text sections (code) */
+    build/sprite.o (.rodata*)          /* .text* sections (code) */
+    build/sprite_main.o (.rodata)           /* .text sections (code) */
+    build/sprite_main.o (.rodata*)          /* .text* sections (code) */
+    build/tagalong.o (.rodata)           /* .text sections (code) */
+    build/tagalong.o (.rodata*)          /* .text* sections (code) */
+    build/tile_detect.o (.rodata)           /* .text sections (code) */
+    build/tile_detect.o (.rodata*)          /* .text* sections (code) */
+    build/util.o (.rodata)           /* .text sections (code) */
+    build/util.o (.rodata*)          /* .text* sections (code) */
+    build/zelda_assets.o (.rodata)           /* .text sections (code) */
+    build/zelda_assets.o (.rodata*)          /* .text* sections (code) */
+    build/zelda_rtl.o (.rodata)           /* .text sections (code) */
+    build/zelda_rtl.o (.rodata*)          /* .text* sections (code) */
+    
+    . = ALIGN(4);
+    __extflash_rodata_end__ = .;
+    
+  } >EXTFLASH
+
+
+  __extflash_end__ = .;
+  
+
+
 
   /* The startup code goes first into FLASH */
   .isr_vector :
@@ -93,7 +292,8 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
-  /* The program code and other data goes into FLASH */
+
+  /* The rest of program code and other data goes into INTFLASH */
   .text :
   {
     . = ALIGN(4);
@@ -177,6 +377,13 @@ SECTIONS
     . = ALIGN(4);
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
+  } >RAM /* FIXME  >DTCMRAM */
+
+  ._persistent (NOLOAD) :
+  {
+    . = ALIGN(8);
+    *(.persistent)
+    . = ALIGN(8);
   } >DTCMRAM
 
   /* User_heap_stack section, used to check that there is enough RAM left */

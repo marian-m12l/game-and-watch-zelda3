@@ -2,13 +2,24 @@ TARGET = gnw
 
 DEBUG = 1
 #OPT = -Og -ggdb
-OPT = -O0 -ggdb3 -fsanitize=address
+
+ifeq ($(DEBUG), 1)
+  OPT = -O0 -ggdb3 -fsanitize=address
+else
+  OPT = -O3
+endif
+
+HEADLESS = 1
 
 BUILD_DIR = build
 
+ifeq ($(HEADLESS), 1)
+  C_SOURCES = main_headless.c
+else
+  C_SOURCES = main.c
+endif
 
-C_SOURCES =  \
-main.c \
+C_SOURCES += \
 porting.c \
 zelda_assets.c \
 ../zelda3/config.c \
@@ -61,11 +72,24 @@ C_INCLUDES =  \
 
 
 ASFLAGS = $(AS_DEFS) $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
-CFLAGS  = $(C_DEFS) $(C_INCLUDES) `sdl2-config --cflags` $(OPT) -Wall -fdata-sections -ffunction-sections -fmax-errors=5
+#CFLAGS  = $(C_DEFS) $(C_INCLUDES) `sdl2-config --cflags` $(OPT) -Wall -fdata-sections -ffunction-sections -fmax-errors=5
+CFLAGS  = $(C_DEFS) $(C_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections -fmax-errors=5
+ifeq ($(HEADLESS), 0)
+  CFLAGS += `sdl2-config --cflags`
+else
+  CFLAGS += -DHEADLESS
+endif
 CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
 
 #LIBS = -lm `sdl2-config --libs`
-LIBS = -lasan -lm `sdl2-config --libs`
+#LIBS = -lasan -lm `sdl2-config --libs`
+LIBS = -lm
+ifeq ($(DEBUG), 1)
+  LIBS += -lasan
+endif
+ifeq ($(HEADLESS), 0)
+  LIBS += `sdl2-config --libs`
+endif
 LDFLAGS = $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
 
 all: $(BUILD_DIR)/$(TARGET).elf

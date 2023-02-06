@@ -25,6 +25,16 @@ DEBUG = 1
 OPT = -Og
 
 
+INTFLASH_BANK ?= 2
+
+EXTFLASH_OFFSET ?= 1048576
+
+EXTFLASH_SIZE_MB ?= 15
+
+EXTFLASH_SIZE ?= $(shell echo "$$(( $(EXTFLASH_SIZE_MB) * 1024 * 1024 ))")
+
+
+
 #######################################
 # paths
 #######################################
@@ -40,6 +50,9 @@ Core/Src/flash.c \
 Core/Src/lcd.c \
 Core/Src/buttons.c \
 Core/Src/main.c \
+Core/Src/gw_flash.c \
+Core/Src/flashapp.c \
+Core/Src/sha256.c \
 Core/Src/stm32h7xx_it.c \
 Core/Src/stm32h7xx_hal_msp.c \
 Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_cortex.c \
@@ -67,7 +80,37 @@ Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_spi.c \
 Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_spi_ex.c \
 Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_ospi.c \
 Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai_ex.c
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai_ex.c \
+Core/Src/porting/zelda_assets.c \
+zelda3/config.c \
+zelda3/zelda_rtl.c \
+zelda3/misc.c \
+zelda3/nmi.c \
+zelda3/poly.c \
+zelda3/attract.c \
+zelda3/snes/ppu.c \
+zelda3/snes/dma.c \
+zelda3/spc_player.c \
+zelda3/util.c \
+zelda3/audio.c \
+zelda3/overworld.c \
+zelda3/ending.c \
+zelda3/select_file.c \
+zelda3/dungeon.c \
+zelda3/messaging.c \
+zelda3/hud.c \
+zelda3/load_gfx.c \
+zelda3/ancilla.c \
+zelda3/player.c \
+zelda3/sprite.c \
+zelda3/player_oam.c \
+zelda3/snes/apu.c \
+zelda3/snes/dsp.c \
+zelda3/sprite_main.c \
+zelda3/tagalong.c \
+zelda3/third_party/opus-1.3.1-stripped/opus_decoder_amalgam.c \
+zelda3/tile_detect.c \
+zelda3/overlord.c \
 
 # ASM sources
 ASM_SOURCES =  \
@@ -115,6 +158,7 @@ AS_DEFS =
 
 # C defines
 C_DEFS =  \
+-DINTFLASH_BANK=$(INTFLASH_BANK) \
 -DUSE_HAL_DRIVER \
 -DSTM32H7B0xx
 
@@ -129,13 +173,15 @@ C_INCLUDES =  \
 -IDrivers/STM32H7xx_HAL_Driver/Inc \
 -IDrivers/STM32H7xx_HAL_Driver/Inc/Legacy \
 -IDrivers/CMSIS/Device/ST/STM32H7xx/Include \
--IDrivers/CMSIS/Include
+-IDrivers/CMSIS/Include \
+-I. \
 
 
 # compile gcc flags
 ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
 
 CFLAGS = $(MCU) $(C_DEFS) $(C_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
+CFLAGS += -DHEADLESS
 
 ifeq ($(DEBUG), 1)
 CFLAGS += -g -gdwarf-2 -O0
@@ -149,16 +195,29 @@ CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
 #######################################
 # LDFLAGS
 #######################################
+
+
+LDFLAGS += -Wl,--defsym=__EXTFLASH_OFFSET__=$(EXTFLASH_OFFSET)
+LDFLAGS += -Wl,--defsym=__EXTFLASH_TOTAL_LENGTH__=$(EXTFLASH_SIZE)
+
+ifeq ($(INTFLASH_BANK), 1)
+	INTFLASH_ADDRESS = 0x08000000
+else ifeq ($(INTFLASH_BANK), 2)
+	INTFLASH_ADDRESS = 0x08100000
+endif
+
+LDFLAGS += -Wl,--defsym=__INTFLASH__=$(INTFLASH_ADDRESS)
+
 # link script
 LDSCRIPT = STM32H7B0VBTx_FLASH.ld
 
 # libraries
 LIBS = -lc -lm -lnosys 
 LIBDIR = 
-LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
+LDFLAGS += $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
 
 # default action: build all
-all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
+all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET)_extflash.bin $(BUILD_DIR)/$(TARGET)_intflash.bin
 
 
 #######################################
@@ -193,13 +252,42 @@ $(BUILD_DIR):
 
 
 OPENOCD ?= openocd
-OCDIFACE ?= interface/stlink.cfg
+OCDIFACE ?= scripts/interface_jlink.cfg #interface/jlink.cfg
+FLASH_MULTI ?= scripts/flash_multi.sh
 
-flash: $(BUILD_DIR)/$(TARGET).bin
-	dd if=$(BUILD_DIR)/$(TARGET).bin of=$(BUILD_DIR)/$(TARGET)_flash.bin bs=1024 count=128
-	$(OPENOCD) -f $(OCDIFACE) -c "transport select hla_swd" -f "target/stm32h7x.cfg" -c "reset_config none; program $(BUILD_DIR)/$(TARGET)_flash.bin 0x08000000 verify reset exit"
+#flash: $(BUILD_DIR)/$(TARGET).bin
+#	dd if=$(BUILD_DIR)/$(TARGET).bin of=$(BUILD_DIR)/$(TARGET)_flash.bin bs=1024 count=128
+#	$(OPENOCD) -f $(OCDIFACE) -c "transport select hla_swd" -f "target/stm32h7x.cfg" -c "reset_config none; program $(BUILD_DIR)/$(TARGET)_flash.bin 0x08000000 verify reset exit"
 
-.PHONY: flash
+#.PHONY: flash
+
+
+$(BUILD_DIR)/$(TARGET)_extflash.bin: $(BUILD_DIR)/$(TARGET).elf | $(BUILD_DIR)
+#	$(V)$(ECHO) [ BIN ] $(notdir $@)
+	$(V)$(BIN) -j ._extflash -j .extflash_text -j extflash_rodata $< $(BUILD_DIR)/$(TARGET)_extflash.bin
+
+$(BUILD_DIR)/$(TARGET)_intflash.bin: $(BUILD_DIR)/$(TARGET).elf | $(BUILD_DIR)
+#	$(V)$(ECHO) [ BIN ] $(notdir $@)
+	$(V)$(BIN) -j .isr_vector -j .text -j .rodata -j .ARM.extab -j .preinit_array -j .init_array -j .fini_array -j .data $< $(BUILD_DIR)/$(TARGET)_intflash.bin
+
+
+
+
+# Programs the internal flash using a new OpenOCD instance
+flash_intflash: $(BUILD_DIR)/$(TARGET)_intflash.bin
+	$(OPENOCD) -f $(OCDIFACE) -c "program $< $(INTFLASH_ADDRESS) verify reset exit"
+.PHONY: flash_intflash
+
+flash_extflash: $(BUILD_DIR)/$(TARGET)_extflash.bin
+	$(FLASH_MULTI) $(BUILD_DIR)/$(TARGET)_extflash.bin $(EXTFLASH_OFFSET)
+.PHONY: flash_extflash
+
+
+size: $(BUILD_DIR)/$(TARGET).elf
+	$(V)./scripts/size.sh $<
+.PHONY: size
+
+
 
 GDB ?= $(PREFIX)gdb
 

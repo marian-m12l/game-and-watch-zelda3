@@ -22,12 +22,20 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "buttons.h"
-#include "flash.h"
-#include "lcd.h"
+#include "buttons.h"  // FIXME replace with gw_buttons ???
+#include "flash.h"    // FIXME replace with gw_flash ???
+#include "lcd.h"      // FIXME replace with gw_lcd ??? handle dual framebuffer ???
 
-#include "porting.h"
-#include "zelda_assets.h"
+//#include "gw_flash.h"
+//#include "flashapp.h" // FIXME Flashapp without UI ???
+
+// FIXME ??? #include "porting.h"
+//#include "zelda_assets.h"
+
+//#include "zelda3/assets.h"
+//#include "zelda3/config.h"
+//#include "zelda3/types.h"
+//#include "zelda3/zelda_rtl.h"
 
 /* USER CODE END Includes */
 
@@ -58,6 +66,15 @@ SPI_HandleTypeDef hspi2;
 
 /* USER CODE BEGIN PV */
 
+/*
+#define BOOT_MODE_APP      0
+#define BOOT_MODE_FLASHAPP 1
+
+char logbuf[1024 * 4] PERSISTENT __attribute__((aligned(4)));
+uint32_t log_idx PERSISTENT;
+
+PERSISTENT volatile uint32_t boot_magic;
+*/
 uint16_t audiobuffer[48000] __attribute__((section (".audio")));
 
 /* USER CODE END PV */
@@ -78,6 +95,229 @@ static void MX_NVIC_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+/*
+int _write(int file, char *ptr, int len)
+{
+  if (log_idx + len + 1 > sizeof(logbuf)) {
+    log_idx = 0;
+  }
+
+  memcpy(&logbuf[log_idx], ptr, len);
+  log_idx += len;
+  logbuf[log_idx + 1] = '\0';
+
+  return len;
+}
+
+
+void boot_magic_set(uint32_t magic)
+{
+  boot_magic = magic;
+}
+*/
+
+/*
+static uint8 g_paused, g_turbo, g_replay_turbo = true, g_cursor = true;
+static uint8 g_current_window_scale;
+static uint8 g_gamepad_buttons;
+static int g_input1_state;
+static bool g_display_perf;
+static int g_curr_fps;
+static int g_ppu_render_flags = 0;
+static int g_snes_width, g_snes_height;
+//static int g_sdl_audio_mixer_volume = SDL_MIX_MAXVOLUME;
+//static struct RendererFuncs g_renderer_funcs;
+static uint32 g_gamepad_modifiers;
+static uint16 g_gamepad_last_cmd[kGamepadBtn_Count];
+*/
+
+
+/*
+void NORETURN Die(const char *error) {
+//#if defined(NDEBUG) && defined(_WIN32)
+//  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, kWindowTitle, error, NULL);
+//#endif
+  printf(stderr, "Error: %s\n", error);
+  //exit(1);
+  Error_Handler();
+}
+*/
+
+/*
+const uint8 *g_asset_ptrs[kNumberOfAssets];
+uint32 g_asset_sizes[kNumberOfAssets];
+*/
+
+static void LoadAssets() {
+  // TODO static allocation --> direct flash access???
+/*
+  size_t length = zelda_assets_length;
+  uint8 *data = zelda_assets;
+  
+  static const char kAssetsSig[] = { kAssets_Sig };
+
+  if (length < 16 + 32 + 32 + 8 + kNumberOfAssets * 4 ||
+      memcmp(data, kAssetsSig, 48) != 0 ||
+      *(uint32*)(data + 80) != kNumberOfAssets)
+    Die("Invalid assets file");
+
+  uint32 offset = 88 + kNumberOfAssets * 4 + *(uint32 *)(data + 84);
+
+  for (size_t i = 0; i < kNumberOfAssets; i++) {
+    uint32 size = *(uint32 *)(data + 88 + i * 4);
+    offset = (offset + 3) & ~3;
+    if ((uint64)offset + size > length)
+      Die("Assets file corruption");
+    g_asset_sizes[i] = size;
+    g_asset_ptrs[i] = data + offset;
+    offset += size;
+  }
+*/
+}
+
+
+static void DrawPpuFrameWithPerf() {
+  /*int render_scale = PpuGetCurrentRenderScale(g_zenv.ppu, g_ppu_render_flags);*/
+/*
+  uint8 *pixel_buffer = framebuffer;    //0;
+  int pitch = 320 * 2; // FIXME WIDTH * BPP; // FIXME 0;
+
+  ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags); // FIXME SHOULD DRAW RGB565 !!!
+*/
+}
+
+
+void ZeldaApuLock() {
+}
+
+void ZeldaApuUnlock() {
+}
+
+/*
+static void HandleCommand(uint32 j, bool pressed) {
+  if (j <= kKeys_Controls_Last) {
+    static const uint8 kKbdRemap[] = { 0, 4, 5, 6, 7, 2, 3, 8, 0, 9, 1, 10, 11 };
+    if (pressed)
+      g_input1_state |= 1 << kKbdRemap[j];
+    else
+      g_input1_state &= ~(1 << kKbdRemap[j]);
+    return;
+  }
+
+  if (j == kKeys_Turbo) {
+    g_turbo = pressed;
+    return;
+  }
+}
+*/
+
+/*
+void app_main(void)
+{
+    printf("[main.c] app_main\n");
+
+    // TODO blink screen until button is pressed !!! -> better keep backlight ON and blink a color in the framebuffer !!!
+    bool go = false;
+    while(!go) {
+        lcd_backlight_on();
+        HAL_Delay(100);
+        lcd_backlight_off();
+        HAL_Delay(100);
+        uint32_t buttons = buttons_get();
+        if(buttons & B_A) {
+          go = true;
+        }
+    }
+    
+
+    // TODO Next, try to run this from extflash
+    lcd_backlight_on();
+    uint8_t r = 0x00;
+    uint8_t g = 0x00;
+    uint8_t b = 0x00;
+    const int w2 = 320;
+    const int h2 = 240;
+    const int hpad = 27;
+    while(1) {
+        HAL_Delay(100);
+        for (int y = 0; y < h2; y++) {
+            uint16_t *dest_row = &framebuffer[y * w2 + hpad];
+            for (int x = 0; x < w2; x++) {
+                dest_row[x] = ((r & 0x1F) << 11) | ((g & 0x3F) << 5) | (b & 0x1F);  // RGB565
+            }
+        }
+        r = (r + 1) % 0x20;
+        g = (g + 2) % 0x40;
+        b = (b + 1) % 0x20;
+    }
+
+    // FIXME Zelda / extflash is disabled for now
+    return 0;
+
+    /*
+    LoadAssets();
+    ZeldaInitialize();
+
+    bool running = true;
+    uint32 lastTick = HAL_GetTick();
+    uint32 curTick = 0;
+    uint32 frameCtr = 0;
+    bool audiopaused = true;
+
+    while(running) {
+
+        if (g_paused != audiopaused) {
+        audiopaused = g_paused;
+        }
+
+        if (g_paused) {
+        continue;
+        }
+
+        // Clear gamepad inputs when joypad directional inputs to avoid wonkiness
+        int inputs = g_input1_state;
+        if (g_input1_state & 0xf0)
+        g_gamepad_buttons = 0;
+        inputs |= g_gamepad_buttons;
+
+        bool is_replay = ZeldaRunFrame(inputs);
+
+        frameCtr++;
+
+        if ((g_turbo ^ (is_replay & g_replay_turbo)) && (frameCtr & (g_turbo ? 0xf : 0x7f)) != 0) {
+        continue;
+        }
+
+        DrawPpuFrameWithPerf();
+
+        // TODO Need to refresh screen !!!
+        
+        // if vsync isn't working, delay manually
+        curTick = HAL_GetTick();
+
+        if (!g_config.disable_frame_delay) {
+        static const uint8 delays[3] = { 17, 17, 16 }; // 60 fps
+        lastTick += delays[frameCtr % 3];
+
+        if (lastTick > curTick) {
+            uint32 delta = lastTick - curTick;
+            if (delta > 500) {
+            lastTick = curTick - 500;
+            delta = 500;
+            }
+    //        printf("Sleeping %d\n", delta);
+        } else if (curTick - lastTick > 500) {
+            lastTick = curTick;
+        }
+        }
+    }
+
+    return 0;
+    */
+    /*
+}
+*/
+
 /* USER CODE END 0 */
 
 /**
@@ -87,6 +327,43 @@ static void MX_NVIC_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+
+  /*
+  uint8_t boot_mode = BOOT_MODE_APP;
+
+  for(int i = 0; i < 1000000; i++) {
+    __NOP();
+  }
+
+  switch (boot_magic) {
+  case BOOT_MAGIC_STANDBY:
+    printf("Boot from standby.\nboot_magic=0x%08lx\n", boot_magic);
+    break;
+  case BOOT_MAGIC_RESET:
+    printf("Boot from warm reset.\nboot_magic=0x%08lx\n", boot_magic);
+    break;
+  case BOOT_MAGIC_WATCHDOG:
+    printf("Boot from watchdog reset!\nboot_magic=0x%08lx\n", boot_magic);
+    //trigger_wdt_bsod = 1;
+    break;
+  case BOOT_MAGIC_FLASHAPP:
+    boot_mode = BOOT_MODE_FLASHAPP;
+    break;
+  default:
+    if ((boot_magic & BOOT_MAGIC_BSOD_MASK) == BOOT_MAGIC_BSOD) {
+      //uint16_t fault_idx = boot_magic & 0xffff;
+      //const char *fault = (fault_idx < BSOD_COUNT) ? fault_list[fault_idx] : "UNKOWN";
+      //printf("Boot from BSOD:\nboot_magic=0x%08lx %s\n", boot_magic, fault);
+    } else {
+      printf("Boot from brownout?\nboot_magic=0x%08lx\n", boot_magic);
+    }
+    break;
+  }
+
+  // Leave a trace that indicates a warm reset
+  boot_magic = BOOT_MAGIC_RESET;
+  */
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -117,7 +394,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   lcd_init(&hspi2, &hltdc);
-  memset(framebuffer, 0xff, 320*240*2);
+  memset(framebuffer, 0x42, 320*240*2);
 
   /* USER CODE END 2 */
 
@@ -131,15 +408,24 @@ int main(void)
   if(*ptr == 0x88888888) {
     Error_Handler();
   }
+/*
+  printf("[main.c] Booting with mode: %d\n", boot_mode);
 
-  uint16_t color = 0x0000;
-  uint32_t i = 0;
-
-  // Create a continuous square wave and loop it using DMA in circular mode
-  for (uint32_t i = 0; i < sizeof(audiobuffer) / sizeof(audiobuffer[0]); i++) {
-    audiobuffer[i] = (i % (48000 / 500)) > 48 ? 200 : -200;
+  switch (boot_mode) {
+  case BOOT_MODE_APP:
+    //wdog_enable();
+    // Launch the emulator
+    app_main();
+    break;
+  case BOOT_MODE_FLASHAPP:
+    flashapp_main();
+    break;
+  default:
+    break;
   }
-  HAL_SAI_Transmit_DMA(&hsai_BlockA1, audiobuffer, sizeof(audiobuffer) / sizeof(audiobuffer[0]));
+*/
+
+
 
   while (1)
   {
@@ -149,20 +435,19 @@ int main(void)
 
     uint32_t buttons = buttons_get();
     if(buttons & B_Left) {
-      color = 0xf000;
+      // TODO
     }
     if(buttons & B_Right) {
-      color = 0x0f00;
+      // TODO
     }
     if(buttons & B_Up) {
-      color = 0x00f0;
+      // TODO
     }
     if(buttons & B_Down) {
-      
-      color = *ptr&0xff;
+      // TODO
     }
-    
-    for(int x=0; x < 320; x++) {
+
+    /*for(int x=0; x < 320; x++) {
       for(int y=0; y < 240; y++) {
         // framebuffer[(y*320)+x] = i;
         if(((x + i)/10 % 2 == 0) && (((y + i)/10 % 2 == 0))){
@@ -177,7 +462,7 @@ int main(void)
     }
     
     HAL_Delay(20);
-    i++;
+    i++;*/
     // if(i % 30 == 0) {
     //   if(color == 0xf800) {
     //     color = 0x7e0;

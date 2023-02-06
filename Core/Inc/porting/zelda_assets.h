@@ -1,4 +1,4 @@
 #pragma once
 
-extern unsigned int zelda_assets_length;
-extern unsigned char zelda_assets[];
+extern const unsigned int zelda_assets_length;
+extern const unsigned char zelda_assets[] __attribute__((section (".extflash_data")));
