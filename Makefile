@@ -50,6 +50,7 @@ Core/Src/flash.c \
 Core/Src/lcd.c \
 Core/Src/buttons.c \
 Core/Src/main.c \
+Core/Src/xip_from_flash.c \
 Core/Src/gw_flash.c \
 Core/Src/flashapp.c \
 Core/Src/sha256.c \
@@ -281,6 +282,14 @@ flash_intflash: $(BUILD_DIR)/$(TARGET)_intflash.bin
 flash_extflash: $(BUILD_DIR)/$(TARGET)_extflash.bin
 	$(FLASH_MULTI) $(BUILD_DIR)/$(TARGET)_extflash.bin $(EXTFLASH_OFFSET)
 .PHONY: flash_extflash
+
+# Programs both the external and internal flash.
+flash:
+	$(V)$(MAKE) flash_intflash
+	$(V)$(MAKE) flash_extflash
+#	$(V)$(RESET_DBGMCU_CMD)
+	$(V)$(MAKE) reset_dbgmcu 
+.PHONY: flash
 
 
 reset_dbgmcu:

@@ -139,6 +139,9 @@ SECTIONS
 
     __extflash_text_start__ = .;
 
+    build/xip_from_flash.o (.text)
+    build/xip_from_flash.o (.text*)
+
     build/ancilla.o (.text)           /* .text sections (code) */
     build/ancilla.o (.text*)          /* .text* sections (code) */
     build/apu.o (.text)           /* .text sections (code) */
@@ -211,6 +214,9 @@ SECTIONS
     . = ALIGN(4);
 
     __extflash_rodata_start__ = .;
+
+    build/xip_from_flash.o (.rodata)
+    build/xip_from_flash.o (.rodata*)
 
     build/ancilla.o (.rodata)           /* .text sections (code) */
     build/ancilla.o (.rodata*)          /* .text* sections (code) */

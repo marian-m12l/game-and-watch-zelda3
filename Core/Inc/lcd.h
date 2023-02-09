@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 extern uint16_t framebuffer[320 * 240]  __attribute__((section (".lcd")));
+extern uint16_t framebuffer2[320 * 240]  __attribute__((section (".lcd")));
 
 #define GFX_MAX_WIDTH 320
 

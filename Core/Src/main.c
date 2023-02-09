@@ -23,11 +23,12 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "buttons.h"  // FIXME replace with gw_buttons ???
-#include "flash.h"    // FIXME replace with gw_flash ???
 #include "lcd.h"      // FIXME replace with gw_lcd ??? handle dual framebuffer ???
 
-//#include "gw_flash.h"
-//#include "flashapp.h" // FIXME Flashapp without UI ???
+#include "xip_from_flash.h"
+
+#include "gw_flash.h"
+#include "flashapp.h"
 
 // FIXME ??? #include "porting.h"
 //#include "zelda_assets.h"
@@ -94,6 +95,91 @@ static void MX_NVIC_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+
+const char *fault_list[] = {
+  [BSOD_ABORT] = "Assert",
+  [BSOD_HARDFAULT] = "Hardfault",
+  [BSOD_MEMFAULT] = "Memfault",
+  [BSOD_BUSFAULT] = "Busfault",
+  [BSOD_USAGEFAULT] = "Usagefault",
+  [BSOD_WATCHDOG] = "Watchdog",
+  [BSOD_OTHER] = "Other",
+};
+
+__attribute__((optimize("-O0"))) void BSOD(BSOD_t fault, uint32_t pc, uint32_t lr)
+{
+  char msg[256];
+  size_t i = 0;
+  char *start;
+  char *end;
+  char *line;
+  int y = 2*8;
+
+  __disable_irq();
+
+  snprintf(msg, sizeof(msg), "FATAL EXCEPTION: %s\nPC=0x%08lx LR=0x%08lx\n", fault_list[fault], pc, lr);
+  
+  lcd_fill_framebuffer(0x00, 0x00, 0x1f); // Blue
+
+/*
+  lcd_sync();
+  lcd_reset_active_buffer();
+  odroid_display_set_backlight(ODROID_BACKLIGHT_LEVEL6);
+
+  odroid_overlay_draw_text(0, 0, GW_LCD_WIDTH, msg, C_RED, C_BLUE);
+
+  // Print each line from the log in reverse
+  end = &logbuf[strnlen(logbuf, sizeof(logbuf)) - 1];
+  while (y < GW_LCD_HEIGHT) {
+    // Max 28 lines
+    if (i++ >= 28) {
+      break;
+    }
+
+    // Find the last line start not beyond end (inefficient but simple solution)
+    start = logbuf;
+    while (start < end) {
+      line = start;
+      start = strnstr(start, "\n", end - start);
+      if (start == NULL) {
+        break;
+      } else {
+        // Move past \n
+        start += 1;
+      }
+    }
+
+    // Terminate the previous line
+    end[0] = '\x00';
+
+    end = line;
+
+    y += odroid_overlay_draw_text(0, y, GW_LCD_WIDTH, line, C_WHITE, C_BLUE);
+
+    if (line == logbuf) {
+      // No more lines to print
+      break;
+    }
+  }
+*/
+
+  // Wait for a button press (allows a user to hold and release a button when the BSOD occurs)
+  uint32_t old_buttons = buttons_get();
+  while ((buttons_get() == 0 || (buttons_get() == old_buttons))) {
+    //wdog_refresh();
+  }
+
+  // Encode the fault type in the boot magic
+  boot_magic = BOOT_MAGIC_BSOD | (fault & 0xffff);
+
+  HAL_NVIC_SystemReset();
+
+  // Does not return
+  while (1) {
+    __NOP();
+  }
+}
 
 /*
 int _write(int file, char *ptr, int len)
@@ -216,11 +302,15 @@ void app_main(void)
 {
     //printf("[main.c] app_main\n");
 
-    
-    memset(framebuffer, 0xf0, 320*240*2);
+    lcd_fill_framebuffer(0x08, 0x0f, 0x08); // Light gray
     
     while(1) {
-        HAL_Delay(100);
+      xip_from_flash(); // Red
+      HAL_Delay(500);
+      lcd_fill_framebuffer(0x02, 0x04, 0x02); // Dark gray
+      HAL_Delay(500);
+      lcd_fill_framebuffer(0x08, 0x0f, 0x08); // Dark gray
+      HAL_Delay(500);
     }
 
 /*
@@ -359,9 +449,9 @@ int main(void)
     break;
   default:
     if ((boot_magic & BOOT_MAGIC_BSOD_MASK) == BOOT_MAGIC_BSOD) {
-      //uint16_t fault_idx = boot_magic & 0xffff;
-      //const char *fault = (fault_idx < BSOD_COUNT) ? fault_list[fault_idx] : "UNKOWN";
-      //printf("Boot from BSOD:\nboot_magic=0x%08lx %s\n", boot_magic, fault);
+      uint16_t fault_idx = boot_magic & 0xffff;
+      const char *fault = (fault_idx < BSOD_COUNT) ? fault_list[fault_idx] : "UNKOWN";
+      printf("Boot from BSOD:\nboot_magic=0x%08lx %s\n", boot_magic, fault);
     } else {
       printf("Boot from brownout?\nboot_magic=0x%08lx\n", boot_magic);
     }
@@ -401,14 +491,21 @@ int main(void)
   MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
 
+  // Initialize the external flash
+
+  OSPI_Init(&hospi1);
+
   lcd_init(&hspi2, &hltdc);
-  memset(framebuffer, 0x42, 320*240*2);
+  lcd_fill_framebuffer(0x00, 0x3f, 0x00); // Green
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  flash_memory_map(&hospi1);
+  
+  // TODO Make sure QPSI is in memory-mapped mode to enable XIP at 0x90100000
+  // FIXME Done in OSPI_Init: OSPI_EnableMemoryMappedMode();
+  //flash_memory_map(&hospi1);
 
   // Sanity check, sometimes this is triggered
   uint32_t add = 0x90000000;
@@ -426,7 +523,7 @@ int main(void)
     app_main();
     break;
   case BOOT_MODE_FLASHAPP:
-    //FIXME flashapp_main();
+    flashapp_main();
     break;
   default:
     break;
@@ -636,7 +733,7 @@ static void MX_OCTOSPI1_Init(void)
   hospi1.Init.FifoThreshold = 4;
   hospi1.Init.DualQuad = HAL_OSPI_DUALQUAD_DISABLE;
   hospi1.Init.MemoryType = HAL_OSPI_MEMTYPE_MACRONIX;
-  hospi1.Init.DeviceSize = 20;
+  hospi1.Init.DeviceSize = 24;  // 16MB
   hospi1.Init.ChipSelectHighTime = 2;
   hospi1.Init.FreeRunningClock = HAL_OSPI_FREERUNCLK_DISABLE;
   hospi1.Init.ClockMode = HAL_OSPI_CLOCK_MODE_0;

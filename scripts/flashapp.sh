@@ -9,7 +9,7 @@ else
 fi
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-#ELF=${DIR}/../build/gw_retro_go.elf
+ELF=${DIR}/../build/gw_base.elf
 ADDRESS=0
 
 BOOT_MAGIC_FLASHAPP="0xf1a5f1a5"
@@ -38,6 +38,15 @@ VAR_program_erase_bytes=$(     printf '0x%08x\n' $(get_symbol "program_erase_byt
 VAR_program_chunk_idx=$(       printf '0x%08x\n' $(get_symbol "program_chunk_idx"))
 VAR_program_chunk_count=$(     printf '0x%08x\n' $(get_symbol "program_chunk_count"))
 VAR_program_expected_sha256=$( printf '0x%08x\n' $(get_symbol "program_expected_sha256"))
+VAR_program_calculated_sha256=$( printf '0x%08x\n' $(get_symbol "program_calculated_sha256"))
+
+# FIXME ELF is not set!!!
+echo ${ELF}
+echo ${VAR_boot_magic}
+echo ${VAR_framebuffer2}
+echo ${VAR_flashapp_state}
+echo ${VAR_program_expected_sha256}
+echo ${VAR_program_calculated_sha256}
 
 INTFLASH_BANK=${INTFLASH_BANK:-1}
 if [ $INTFLASH_BANK -eq 2 ]; then
@@ -64,6 +73,10 @@ function calc_sha256sum() {
 
 function read_word() {
     ${OPENOCD} -f ${DIR}/interface_${ADAPTER}.cfg -c "init; mdw $1" -c "exit;" 2>&1 | grep $1 | cut -d" " -f2
+}
+
+function read_sha256() {
+    ${OPENOCD} -f ${DIR}/interface_${ADAPTER}.cfg -c "init; mdw $1 8" -c "exit;" 2>&1 | grep $1 | cut -d":" -f2
 }
 
 function state_to_string() {
@@ -138,12 +151,14 @@ fi
 if [[ $# -gt 1 ]]; then
     ADDRESS=$2
 fi
+echo ${ADDRESS}
 
 if [[ $# -gt 2 ]]; then
     SIZE=$3
 else
     SIZE=$(( 512 * 1024 ))
 fi
+echo ${SIZE}
 
 ERASE=1
 if [[ $# -gt 3 ]]; then
@@ -176,6 +191,7 @@ fi
 dd if="${IMAGE}" of="${HASH_FILE}" bs=1 count=$(( SIZE )) 2> /dev/null
 calc_sha256sum "${HASH_FILE}" "${HASH_HEX_FILE}"
 rm -f "${HASH_FILE}"
+cat "${HASH_HEX_FILE}"
 
 if [[ ${CHUNK_IDX} -eq "1" ]]; then
     ${OPENOCD} -f ${DIR}/interface_${ADAPTER}.cfg \
@@ -210,6 +226,10 @@ echo "Loading data"
     -c "mww ${VAR_program_start} 1" \
     -c "resume; exit;"
 
+echo_red "Actual image: "
+echo_red "${IMAGE}"
+echo_red "$(read_sha256 ${VAR_framebuffer2})"
+
 # Remove the temporary hash files
 rm -f "${HASH_HEX_FILE}"
 
@@ -228,6 +248,14 @@ while true; do
         STATUS_REG=$(read_word ${VAR_program_status})
         if [[ "$STATUS_REG" == "$STATUS_BAD_HASH_RAM" ]]; then
             echo_red "Hash mismatch in RAM. Flashing failed."
+            echo_red "Expected hash: "
+            echo_red "$(read_sha256 ${VAR_program_expected_sha256})"
+            echo_red "Computed hash: "
+            echo_red "$(read_sha256 ${VAR_program_calculated_sha256})"
+            echo_red "Expected image: "
+            cat ${IMAGE}
+            echo_red "Actual image: "
+            echo_red "$(read_sha256 ${VAR_framebuffer2})"
             exit 3
         elif [[ "$STATUS_REG" == "$STATUS_BAD_HAS_FLASH" ]]; then
             echo_red "Hash mismatch in FLASH. Flashing failed."

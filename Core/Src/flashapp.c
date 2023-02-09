@@ -77,7 +77,7 @@ typedef struct {
 
 // framebuffer1 is used as an actual framebuffer.
 // framebuffer2 and onwards is used as a buffer for the flash.
-static uint8_t *flash_buffer = (uint8_t *) framebuffer; //framebuffer2;
+static uint8_t *flash_buffer = (uint8_t *) framebuffer2;
 
 // Values below are read or written by the debugger
 
@@ -173,6 +173,63 @@ static void redraw(flashapp_t *flashapp)
     draw_progress(flashapp);
     lcd_swap();
     */
+
+    // Draw to framebuffer depending on status
+    switch (flashapp_state) {
+    case FLASHAPP_INIT:
+        lcd_fill_framebuffer(0x1f, 0x3f, 0x00); // Yellow
+        break;
+    case FLASHAPP_IDLE:
+        // program_start is set by the flash script
+        switch (program_start) {
+        case 1: // Normal flash operation
+            lcd_fill_framebuffer(0x1f, 0x3f, 0x02); // Yellow-Greenish
+            break;
+        case 2: // Test flash
+            lcd_fill_framebuffer(0x1f, 0x3f, 0x04); // Yellow
+            break;
+        default:
+            break;
+        }
+        break;
+    case FLASHAPP_START:
+        lcd_fill_framebuffer(0x1f, 0x3f, 0x06); // Yellow-Green
+        break;
+    case FLASHAPP_CHECK_HASH_RAM_NEXT:
+        lcd_fill_framebuffer(0x1f, 0x3f, 0x07); // Yellow-Green
+        break;
+    case FLASHAPP_CHECK_HASH_RAM:
+        lcd_fill_framebuffer(0x1f, 0x3f, 0x08); // Yellow-Green
+        break;
+    case FLASHAPP_ERASE_NEXT:
+        lcd_fill_framebuffer(0x1f, 0x3f, 0x09); // Yellow-Green
+        break;
+    case FLASHAPP_ERASE:
+        lcd_fill_framebuffer(0x1f, 0x3f, 0x0a); // Yellow-Green
+        break;
+    case FLASHAPP_PROGRAM_NEXT:
+        lcd_fill_framebuffer(0x1f, 0x3f, 0x0b); // Yellow-Green
+        break;
+    case FLASHAPP_PROGRAM:
+        lcd_fill_framebuffer(0x1f, 0x3f, 0x0c); // Yellow-Green
+        break;
+    case FLASHAPP_CHECK_HASH_FLASH_NEXT:
+        lcd_fill_framebuffer(0x1f, 0x3f, 0x0d); // Yellow-Green
+        break;
+    case FLASHAPP_CHECK_HASH_FLASH:
+        lcd_fill_framebuffer(0x1f, 0x3f, 0x0e); // Yellow-Green
+        break;
+    case FLASHAPP_TEST_NEXT:
+        lcd_fill_framebuffer(0x1f, 0x3f, 0x0f); // Yellow-Green
+        break;
+    case FLASHAPP_TEST:
+    case FLASHAPP_FINAL:
+    case FLASHAPP_ERROR:
+        // Stay in state until reset.
+        lcd_fill_framebuffer(0x1f, 0x3f, 0x1f); // White
+        break;
+    }
+
 }
 
 static bool validate_erased(uint32_t address, uint32_t size)

@@ -3,6 +3,7 @@
 #include "main.h"
 
 uint16_t framebuffer[320 * 240];
+uint16_t framebuffer2[320 * 240];
 
 void lcd_backlight_off() {
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
@@ -13,6 +14,15 @@ void lcd_backlight_on() {
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
+}
+
+void lcd_fill_framebuffer(uint8_t r, uint8_t g, uint8_t b) {
+  uint16_t color = ((r & 0x1f) << 11) | ((g & 0x3f) << 5) | (b & 0x1f);
+  for (int y = 0; y < 240; y++) {
+      for (int x = 0; x < 320; x++) {
+          framebuffer[y*320 + x] = color;  // RGB565
+      }
+  }
 }
 
 void lcd_init(SPI_HandleTypeDef *spi, LTDC_HandleTypeDef *ltdc) {
