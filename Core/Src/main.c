@@ -66,15 +66,15 @@ SPI_HandleTypeDef hspi2;
 
 /* USER CODE BEGIN PV */
 
-/*
+
 #define BOOT_MODE_APP      0
 #define BOOT_MODE_FLASHAPP 1
 
-char logbuf[1024 * 4] PERSISTENT __attribute__((aligned(4)));
-uint32_t log_idx PERSISTENT;
+//char logbuf[1024 * 4] PERSISTENT __attribute__((aligned(4)));
+//uint32_t log_idx PERSISTENT;
 
 PERSISTENT volatile uint32_t boot_magic;
-*/
+
 uint16_t audiobuffer[48000] __attribute__((section (".audio")));
 
 /* USER CODE END PV */
@@ -108,13 +108,13 @@ int _write(int file, char *ptr, int len)
 
   return len;
 }
-
+*/
 
 void boot_magic_set(uint32_t magic)
 {
   boot_magic = magic;
 }
-*/
+
 
 /*
 static uint8 g_paused, g_turbo, g_replay_turbo = true, g_cursor = true;
@@ -211,11 +211,19 @@ static void HandleCommand(uint32 j, bool pressed) {
 }
 */
 
-/*
+
 void app_main(void)
 {
-    printf("[main.c] app_main\n");
+    //printf("[main.c] app_main\n");
 
+    
+    memset(framebuffer, 0xf0, 320*240*2);
+    
+    while(1) {
+        HAL_Delay(100);
+    }
+
+/*
     // TODO blink screen until button is pressed !!! -> better keep backlight ON and blink a color in the framebuffer !!!
     bool go = false;
     while(!go) {
@@ -253,6 +261,7 @@ void app_main(void)
 
     // FIXME Zelda / extflash is disabled for now
     return 0;
+    */
 
     /*
     LoadAssets();
@@ -314,9 +323,8 @@ void app_main(void)
 
     return 0;
     */
-    /*
+    
 }
-*/
 
 /* USER CODE END 0 */
 
@@ -328,7 +336,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 
-  /*
+  
   uint8_t boot_mode = BOOT_MODE_APP;
 
   for(int i = 0; i < 1000000; i++) {
@@ -362,7 +370,7 @@ int main(void)
 
   // Leave a trace that indicates a warm reset
   boot_magic = BOOT_MAGIC_RESET;
-  */
+  
 
   /* USER CODE END 1 */
 
@@ -408,7 +416,7 @@ int main(void)
   if(*ptr == 0x88888888) {
     Error_Handler();
   }
-/*
+
   printf("[main.c] Booting with mode: %d\n", boot_mode);
 
   switch (boot_mode) {
@@ -418,73 +426,12 @@ int main(void)
     app_main();
     break;
   case BOOT_MODE_FLASHAPP:
-    flashapp_main();
+    //FIXME flashapp_main();
     break;
   default:
     break;
   }
-*/
 
-
-
-  while (1)
-  {
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
-
-    uint32_t buttons = buttons_get();
-    if(buttons & B_Left) {
-      // TODO
-    }
-    if(buttons & B_Right) {
-      // TODO
-    }
-    if(buttons & B_Up) {
-      // TODO
-    }
-    if(buttons & B_Down) {
-      // TODO
-    }
-
-    /*for(int x=0; x < 320; x++) {
-      for(int y=0; y < 240; y++) {
-        // framebuffer[(y*320)+x] = i;
-        if(((x + i)/10 % 2 == 0) && (((y + i)/10 % 2 == 0))){
-          framebuffer[(y*320)+x] = color;
-        } else {
-          framebuffer[(y*320)+x] = 0xffff;
-        }
-        
-        // i++;
-      }
-      // i++;
-    }
-    
-    HAL_Delay(20);
-    i++;*/
-    // if(i % 30 == 0) {
-    //   if(color == 0xf800) {
-    //     color = 0x7e0;
-    //   } else {
-    //     color = 0xf800;
-    //   }
-      
-    // }
-// HAL_Delay(500);
-// for(int x=0; x < 320; x++) {
-// for(int y=0; y < 240; y++) {
-// framebuffer[(y*320)+x] = 0x7e0;
-// }
-// }
-// HAL_Delay(500);
-// for(int x=0; x < 320; x++) {
-// for(int y=0; y < 240; y++) {
-// framebuffer[(y*320)+x] = 0x1f;
-// }
-// }
-// HAL_Delay(500);
-  }
   /* USER CODE END 3 */
 }
 

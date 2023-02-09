@@ -283,6 +283,12 @@ flash_extflash: $(BUILD_DIR)/$(TARGET)_extflash.bin
 .PHONY: flash_extflash
 
 
+reset_dbgmcu:
+	# Reset the DBGMCU configuration register (DBGMCU_CR)
+	$(V)$(OPENOCD) -f ${OCDIFACE} -c "init; reset halt; mww 0x5C001004 0x00000000; resume; exit;"
+.PHONY: reset_dbgmcu
+
+
 size: $(BUILD_DIR)/$(TARGET).elf
 	$(V)./scripts/size.sh $<
 .PHONY: size

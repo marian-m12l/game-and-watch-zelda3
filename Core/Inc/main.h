@@ -80,7 +80,7 @@ void Error_Handler(void);
 #define BTN_B_GPIO_Port GPIOD
 /* USER CODE BEGIN Private defines */
 
-/*
+
 #define BOOT_MAGIC_STANDBY  0xfedebeda
 #define BOOT_MAGIC_RESET    0x1fa1afe1
 #define BOOT_MAGIC_WATCHDOG 0xd066cafe
@@ -90,7 +90,7 @@ void Error_Handler(void);
 #define BOOT_MAGIC_BSOD_MASK 0xffff0000
 
 #define PERSISTENT __attribute__((used)) __attribute__((section (".persistent")))
-*/
+
 
 /* USER CODE END Private defines */
 
