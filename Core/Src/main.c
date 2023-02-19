@@ -31,12 +31,12 @@
 #include "flashapp.h"
 
 // FIXME ??? #include "porting.h"
-//#include "zelda_assets.h"
+#include "zelda_assets.h"
 
-//#include "zelda3/assets.h"
-//#include "zelda3/config.h"
-//#include "zelda3/types.h"
-//#include "zelda3/zelda_rtl.h"
+#include "zelda3/assets.h"
+#include "zelda3/config.h"
+#include "zelda3/types.h"
+#include "zelda3/zelda_rtl.h"
 
 /* USER CODE END Includes */
 
@@ -71,8 +71,8 @@ SPI_HandleTypeDef hspi2;
 #define BOOT_MODE_APP      0
 #define BOOT_MODE_FLASHAPP 1
 
-//char logbuf[1024 * 4] PERSISTENT __attribute__((aligned(4)));
-//uint32_t log_idx PERSISTENT;
+char logbuf[1024 * 4] PERSISTENT __attribute__((aligned(4)));
+uint32_t log_idx PERSISTENT;
 
 PERSISTENT volatile uint32_t boot_magic;
 
@@ -181,7 +181,7 @@ __attribute__((optimize("-O0"))) void BSOD(BSOD_t fault, uint32_t pc, uint32_t l
   }
 }
 
-/*
+
 int _write(int file, char *ptr, int len)
 {
   if (log_idx + len + 1 > sizeof(logbuf)) {
@@ -194,7 +194,7 @@ int _write(int file, char *ptr, int len)
 
   return len;
 }
-*/
+
 
 void boot_magic_set(uint32_t magic)
 {
@@ -202,7 +202,7 @@ void boot_magic_set(uint32_t magic)
 }
 
 
-/*
+
 static uint8 g_paused, g_turbo, g_replay_turbo = true, g_cursor = true;
 static uint8 g_current_window_scale;
 static uint8 g_gamepad_buttons;
@@ -215,10 +215,8 @@ static int g_snes_width, g_snes_height;
 //static struct RendererFuncs g_renderer_funcs;
 static uint32 g_gamepad_modifiers;
 static uint16 g_gamepad_last_cmd[kGamepadBtn_Count];
-*/
 
 
-/*
 void NORETURN Die(const char *error) {
 //#if defined(NDEBUG) && defined(_WIN32)
 //  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, kWindowTitle, error, NULL);
@@ -227,16 +225,15 @@ void NORETURN Die(const char *error) {
   //exit(1);
   Error_Handler();
 }
-*/
 
-/*
+
 const uint8 *g_asset_ptrs[kNumberOfAssets];
 uint32 g_asset_sizes[kNumberOfAssets];
-*/
+
 
 static void LoadAssets() {
   // TODO static allocation --> direct flash access???
-/*
+
   size_t length = zelda_assets_length;
   uint8 *data = zelda_assets;
   
@@ -258,18 +255,18 @@ static void LoadAssets() {
     g_asset_ptrs[i] = data + offset;
     offset += size;
   }
-*/
+
 }
 
 
 static void DrawPpuFrameWithPerf() {
   /*int render_scale = PpuGetCurrentRenderScale(g_zenv.ppu, g_ppu_render_flags);*/
-/*
+
   uint8 *pixel_buffer = framebuffer;    //0;
   int pitch = 320 * 2; // FIXME WIDTH * BPP; // FIXME 0;
 
   ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags); // FIXME SHOULD DRAW RGB565 !!!
-*/
+
 }
 
 
@@ -279,7 +276,7 @@ void ZeldaApuLock() {
 void ZeldaApuUnlock() {
 }
 
-/*
+
 static void HandleCommand(uint32 j, bool pressed) {
   if (j <= kKeys_Controls_Last) {
     static const uint8 kKbdRemap[] = { 0, 4, 5, 6, 7, 2, 3, 8, 0, 9, 1, 10, 11 };
@@ -295,7 +292,7 @@ static void HandleCommand(uint32 j, bool pressed) {
     return;
   }
 }
-*/
+
 
 
 void app_main(void)
@@ -303,59 +300,29 @@ void app_main(void)
     //printf("[main.c] app_main\n");
 
     lcd_fill_framebuffer(0x08, 0x0f, 0x08); // Light gray
-    
-    while(1) {
-      xip_from_flash(); // Red
-      HAL_Delay(500);
-      lcd_fill_framebuffer(0x02, 0x04, 0x02); // Dark gray
-      HAL_Delay(500);
-      lcd_fill_framebuffer(0x08, 0x0f, 0x08); // Dark gray
-      HAL_Delay(500);
-    }
 
-/*
     // TODO blink screen until button is pressed !!! -> better keep backlight ON and blink a color in the framebuffer !!!
     bool go = false;
     while(!go) {
-        lcd_backlight_on();
-        HAL_Delay(100);
-        lcd_backlight_off();
-        HAL_Delay(100);
+        xip_from_flash(); // Red
         uint32_t buttons = buttons_get();
         if(buttons & B_A) {
           go = true;
         }
     }
     
-
-    // TODO Next, try to run this from extflash
-    lcd_backlight_on();
-    uint8_t r = 0x00;
-    uint8_t g = 0x00;
-    uint8_t b = 0x00;
-    const int w2 = 320;
-    const int h2 = 240;
-    const int hpad = 27;
-    while(1) {
-        HAL_Delay(100);
-        for (int y = 0; y < h2; y++) {
-            uint16_t *dest_row = &framebuffer[y * w2 + hpad];
-            for (int x = 0; x < w2; x++) {
-                dest_row[x] = ((r & 0x1F) << 11) | ((g & 0x3F) << 5) | (b & 0x1F);  // RGB565
-            }
-        }
-        r = (r + 1) % 0x20;
-        g = (g + 2) % 0x40;
-        b = (b + 1) % 0x20;
-    }
-
-    // FIXME Zelda / extflash is disabled for now
-    return 0;
-    */
-
-    /*
+    lcd_fill_framebuffer(0x08, 0x0f, 0x08); // Light gray
+    HAL_Delay(500);
+    
     LoadAssets();
+    
+    lcd_fill_framebuffer(0x02, 0x04, 0x02); // Dark gray
+    HAL_Delay(500);
+    
     ZeldaInitialize();
+    
+    lcd_fill_framebuffer(0x08, 0x0f, 0x08); // Light gray
+    HAL_Delay(500);
 
     bool running = true;
     uint32 lastTick = HAL_GetTick();
@@ -412,7 +379,7 @@ void app_main(void)
     }
 
     return 0;
-    */
+    
     
 }
 

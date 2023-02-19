@@ -264,7 +264,7 @@ FLASH_MULTI ?= scripts/flash_multi.sh
 
 $(BUILD_DIR)/$(TARGET)_extflash.bin: $(BUILD_DIR)/$(TARGET).elf | $(BUILD_DIR)
 #	$(V)$(ECHO) [ BIN ] $(notdir $@)
-	$(V)$(BIN) -j ._extflash -j .extflash_text -j extflash_rodata $< $(BUILD_DIR)/$(TARGET)_extflash.bin
+	$(V)$(BIN) -j ._extflash -j .extflash_text -j .extflash_rodata $< $(BUILD_DIR)/$(TARGET)_extflash.bin
 
 $(BUILD_DIR)/$(TARGET)_intflash.bin: $(BUILD_DIR)/$(TARGET).elf | $(BUILD_DIR)
 #	$(V)$(ECHO) [ BIN ] $(notdir $@)
@@ -295,6 +295,15 @@ reset_dbgmcu:
 	# Reset the DBGMCU configuration register (DBGMCU_CR)
 	$(V)$(OPENOCD) -f ${OCDIFACE} -c "init; reset halt; mww 0x5C001004 0x00000000; resume; exit;"
 .PHONY: reset_dbgmcu
+
+# Starts openocd and attaches to the target. To be used with 'flash_intflash_nc' and 'gdb'
+openocd:
+	$(OPENOCD) -f $(OCDIFACE).cfg -c "init; halt"
+.PHONY: openocd
+
+dump_logs: $(BUILD_DIR)/$(TARGET).elf
+	$(V)./scripts/dump_logs.sh
+.PHONY: dump_logs
 
 
 size: $(BUILD_DIR)/$(TARGET).elf
