@@ -85,7 +85,7 @@ CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
 #LIBS = -lasan -lm `sdl2-config --libs`
 LIBS = -lm
 ifeq ($(DEBUG), 1)
-  LIBS += -lasan
+  LIBS += -static-libasan
 endif
 ifeq ($(HEADLESS), 0)
   LIBS += `sdl2-config --libs`
