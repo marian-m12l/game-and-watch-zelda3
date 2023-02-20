@@ -18,7 +18,7 @@
 
 #define WIDTH  256  // FIXME 320
 #define HEIGHT 224  // FIXME 240
-#define BPP      4
+#define BPP      2
 #define SCALE    1
 
 #define NES_SCREEN_WIDTH     256
@@ -81,8 +81,8 @@ int init_window(int width, int height)
         return 0;
 
     fb_texture = SDL_CreateTexture(renderer,
-        //SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING,
-        SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
+        SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING,
+        //SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
         width, height);
     if (!fb_texture)
         return 0;

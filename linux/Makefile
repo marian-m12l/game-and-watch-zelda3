@@ -1,6 +1,6 @@
 TARGET = gnw
 
-DEBUG = 1
+DEBUG = 0
 #OPT = -Og -ggdb
 
 ifeq ($(DEBUG), 1)
@@ -9,7 +9,7 @@ else
   OPT = -O3
 endif
 
-HEADLESS = 1
+HEADLESS = 0
 
 BUILD_DIR = build
 

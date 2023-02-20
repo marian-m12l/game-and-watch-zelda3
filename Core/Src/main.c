@@ -340,6 +340,21 @@ void app_main(void)
         continue;
         }
 
+        // Check inputs
+        uint32_t buttons = buttons_get();
+        HandleCommand(1, buttons & B_Up);
+        HandleCommand(2, buttons & B_Down);
+        HandleCommand(3, buttons & B_Left);
+        HandleCommand(4, buttons & B_Right);
+        HandleCommand(5, buttons & B_TIME);
+        HandleCommand(6, buttons & B_PAUSE);
+        HandleCommand(7, buttons & B_A);
+        HandleCommand(8, buttons & B_B);
+        /*HandleCommand(9, buttons & B_X);
+        HandleCommand(10, buttons & B_Y);
+        HandleCommand(11, buttons & B_L);
+        HandleCommand(12, buttons & B_R);*/
+        
         // Clear gamepad inputs when joypad directional inputs to avoid wonkiness
         int inputs = g_input1_state;
         if (g_input1_state & 0xf0)
