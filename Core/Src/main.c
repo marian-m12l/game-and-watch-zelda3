@@ -30,6 +30,8 @@
 #include "gw_flash.h"
 #include "flashapp.h"
 
+#include "gw_linker.h"
+
 // FIXME ??? #include "porting.h"
 #include "zelda_assets.h"
 
@@ -71,12 +73,12 @@ SPI_HandleTypeDef hspi2;
 #define BOOT_MODE_APP      0
 #define BOOT_MODE_FLASHAPP 1
 
-char logbuf[1024 * 4] PERSISTENT __attribute__((aligned(4)));
-uint32_t log_idx PERSISTENT;
+//char logbuf[1024 * 4] PERSISTENT __attribute__((aligned(4)));
+//uint32_t log_idx PERSISTENT;
 
 PERSISTENT volatile uint32_t boot_magic;
 
-uint16_t audiobuffer[48000] __attribute__((section (".audio")));
+//uint16_t audiobuffer[48000] __attribute__((section (".audio")));
 
 /* USER CODE END PV */
 
@@ -182,7 +184,7 @@ __attribute__((optimize("-O0"))) void BSOD(BSOD_t fault, uint32_t pc, uint32_t l
 }
 
 
-int _write(int file, char *ptr, int len)
+/*int _write(int file, char *ptr, int len)
 {
   if (log_idx + len + 1 > sizeof(logbuf)) {
     log_idx = 0;
@@ -193,7 +195,7 @@ int _write(int file, char *ptr, int len)
   logbuf[log_idx + 1] = '\0';
 
   return len;
-}
+}*/
 
 
 void boot_magic_set(uint32_t magic)
@@ -201,6 +203,18 @@ void boot_magic_set(uint32_t magic)
   boot_magic = magic;
 }
 
+
+
+// Workaround for being able to run with -D_FORTIFY_SOURCE=1
+static void memcpy_no_check(uint32_t *dst, uint32_t *src, size_t len)
+{
+  assert((len & 0b11) == 0);
+
+  uint32_t *end = dst + len / 4;
+  while (dst != end) {
+    *(dst++) = *(src++);
+  }
+}
 
 
 static uint8 g_paused, g_turbo, g_replay_turbo = true, g_cursor = true;
@@ -215,6 +229,9 @@ static int g_snes_width, g_snes_height;
 //static struct RendererFuncs g_renderer_funcs;
 static uint32 g_gamepad_modifiers;
 static uint16 g_gamepad_last_cmd[kGamepadBtn_Count];
+
+static uint32 frameCtr = 0;
+static uint32 renderedFrameCtr = 0;
 
 
 void NORETURN Die(const char *error) {
@@ -265,7 +282,29 @@ static void DrawPpuFrameWithPerf() {
   uint8 *pixel_buffer = framebuffer;    //0;
   int pitch = 320 * 2; // FIXME WIDTH * BPP; // FIXME 0;
 
-  ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags); // FIXME SHOULD DRAW RGB565 !!!
+  //ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags); // FIXME SHOULD DRAW RGB565 !!!
+
+
+  static float history[64], average;
+  static int history_pos;
+  uint32 before = HAL_GetTick();
+  ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags);
+  uint32 after = HAL_GetTick();
+  float v = (double)1000.0f / (after - before);
+  average += v - history[history_pos];
+  history[history_pos] = v;
+  history_pos = (history_pos + 1) & 63;
+  g_curr_fps = average * (1.0f / 64);
+
+  // Render fps with dots
+  for (uint8_t y = 1; y<=30; y++) {
+    framebuffer[y*2*320+300] = (y <= g_curr_fps ? 0x07e0 : 0xf800);  // FIXME WIDTH
+  }
+
+  // Render frame counter with dots
+  for (uint16_t x = 1; x<=renderedFrameCtr; x++) {
+    framebuffer[235*320+x*2] = 0x07e0;  // FIXME WIDTH
+  }
 
 }
 
@@ -325,10 +364,15 @@ void app_main(void)
     HAL_Delay(500);
 
     bool running = true;
-    uint32 lastTick = HAL_GetTick();
-    uint32 curTick = 0;
-    uint32 frameCtr = 0;
+    //uint32 lastTick = HAL_GetTick();
+    //uint32 curTick = 0;
+    //uint32 frameCtr = 0;
     bool audiopaused = true;
+
+    // Skip frames
+    uint32 prevFrameTick = 0;
+    uint32 prevTime = 0;
+    //uint32 thisFrameTick = 0;
 
     while(running) {
 
@@ -365,16 +409,26 @@ void app_main(void)
 
         frameCtr++;
 
-        if ((g_turbo ^ (is_replay & g_replay_turbo)) && (frameCtr & (g_turbo ? 0xf : 0x7f)) != 0) {
+        /*if ((g_turbo ^ (is_replay & g_replay_turbo)) && (frameCtr & (g_turbo ? 0xf : 0x7f)) != 0) {
         continue;
+        }*/
+
+        // Skip frames
+        //thisFrameTick = HAL_GetTick();
+        if (prevTime > 34) {
+          prevTime -= 17;
+          continue;
         }
 
+        prevFrameTick = HAL_GetTick();
+        renderedFrameCtr++;
         DrawPpuFrameWithPerf();
+        prevTime = HAL_GetTick() - prevFrameTick;
 
         // TODO Need to refresh screen !!!
         
         // if vsync isn't working, delay manually
-        curTick = HAL_GetTick();
+        /*curTick = HAL_GetTick();
 
         if (!g_config.disable_frame_delay) {
         static const uint8 delays[3] = { 17, 17, 16 }; // 60 fps
@@ -390,7 +444,7 @@ void app_main(void)
         } else if (curTick - lastTick > 500) {
             lastTick = curTick;
         }
-        }
+        }*/
     }
 
     return 0;
@@ -417,13 +471,13 @@ int main(void)
 
   switch (boot_magic) {
   case BOOT_MAGIC_STANDBY:
-    printf("Boot from standby.\nboot_magic=0x%08lx\n", boot_magic);
+    //printf("Boot from standby.\nboot_magic=0x%08lx\n", boot_magic);
     break;
   case BOOT_MAGIC_RESET:
-    printf("Boot from warm reset.\nboot_magic=0x%08lx\n", boot_magic);
+    //printf("Boot from warm reset.\nboot_magic=0x%08lx\n", boot_magic);
     break;
   case BOOT_MAGIC_WATCHDOG:
-    printf("Boot from watchdog reset!\nboot_magic=0x%08lx\n", boot_magic);
+    //printf("Boot from watchdog reset!\nboot_magic=0x%08lx\n", boot_magic);
     //trigger_wdt_bsod = 1;
     break;
   case BOOT_MAGIC_FLASHAPP:
@@ -433,9 +487,9 @@ int main(void)
     if ((boot_magic & BOOT_MAGIC_BSOD_MASK) == BOOT_MAGIC_BSOD) {
       uint16_t fault_idx = boot_magic & 0xffff;
       const char *fault = (fault_idx < BSOD_COUNT) ? fault_list[fault_idx] : "UNKOWN";
-      printf("Boot from BSOD:\nboot_magic=0x%08lx %s\n", boot_magic, fault);
+      //printf("Boot from BSOD:\nboot_magic=0x%08lx %s\n", boot_magic, fault);
     } else {
-      printf("Boot from brownout?\nboot_magic=0x%08lx\n", boot_magic);
+      //printf("Boot from brownout?\nboot_magic=0x%08lx\n", boot_magic);
     }
     break;
   }
@@ -475,10 +529,32 @@ int main(void)
 
   // Initialize the external flash
 
+  //SCB_EnableICache();
+  //SCB_EnableDCache();
+
   OSPI_Init(&hospi1);
 
   lcd_init(&hspi2, &hltdc);
   lcd_fill_framebuffer(0x00, 0x3f, 0x00); // Green
+
+  // TODO Copy instructions and data from extflash to axiram
+/*  void *copy_areas[3];
+
+  copy_areas[0] = &_siramdata;  // 0x90000000
+  copy_areas[1] = &__ram_exec_start__;  // 0x24000000
+  copy_areas[2] = &__ram_exec_end__;  // 0x24000000 + length
+  memcpy_no_check(copy_areas[1], copy_areas[0], copy_areas[2] - copy_areas[1]);
+*/
+
+  // Copy ITCRAM HOT section
+  
+  static uint32_t copy_areas2[4] __attribute__((used));
+  copy_areas2[0] = (uint32_t) &_sitcram_hot;
+  copy_areas2[1] = (uint32_t) &__itcram_hot_start__;
+  copy_areas2[2] = (uint32_t) &__itcram_hot_end__;
+  copy_areas2[3] = copy_areas2[2] - copy_areas2[1];
+  memcpy_no_check((uint32_t *) copy_areas2[1], (uint32_t *) copy_areas2[0], copy_areas2[3]);
+
 
   /* USER CODE END 2 */
 

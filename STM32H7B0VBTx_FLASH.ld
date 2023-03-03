@@ -109,6 +109,44 @@ MEMORY
 /* Define output sections */
 SECTIONS
 {
+  ._itcram :
+  {
+    __itcram_start__ = .;
+    . = ALIGN(4);
+    *(.itcram_data)
+    . = ALIGN(4);
+    *(.itcram_text)
+    . = ALIGN(4);
+  } > ITCMRAM
+
+  /* Copied from flash to ram at boot */
+  _sitcram_hot = LOADADDR(._itcram_hot);
+  ._itcram_hot :
+  {
+    __itcram_hot_start__ = .;
+    . = ALIGN(4);
+    *(.itcram_hot_data)
+    . = ALIGN(4);
+    *(.itcram_hot_text)
+    . = ALIGN(4);
+    *(.text_in_ram)
+    . = ALIGN(4);
+    *(.data_in_ram)
+    . = ALIGN(4);
+    
+    /*build/poly.o (.text)*/           /* .text sections (code) */
+    /*build/poly.o (.text*)*/          /* .text* sections (code) */
+    /*build/ppu.o (.text)*/           /* .text sections (code) */
+    /*build/ppu.o (.text*)*/          /* .text* sections (code) */
+    /*build/sprite.o (.text)*/           /* .text sections (code) */
+    /*build/sprite.o (.text*)*/          /* .text* sections (code) */
+    /*build/zelda_rtl.o (.text)*/           /* .text sections (code) */
+    /*build/zelda_rtl.o (.text*)*/          /* .text* sections (code) */
+
+    __itcram_hot_end__ = .;
+    __itcram_end__ = .;
+  } >ITCMRAM AT> EXTFLASH  /* FIXME AT> EXTFLASH ??? */
+  
   .lcd :
   {
     . = ALIGN(4);
@@ -184,8 +222,8 @@ SECTIONS
     build/player_oam.o (.text*)          /* .text* sections (code) */
     build/poly.o (.text)           /* .text sections (code) */
     build/poly.o (.text*)          /* .text* sections (code) */
-    build/ppu.o (.text)           /* .text sections (code) */
-    build/ppu.o (.text*)          /* .text* sections (code) */
+    /*build/ppu.o (.text)*/           /* .text sections (code) */
+    /*build/ppu.o (.text*)*/          /* .text* sections (code) */
     build/select_file.o (.text)           /* .text sections (code) */
     build/select_file.o (.text*)          /* .text* sections (code) */
     build/spc_player.o (.text)           /* .text sections (code) */
@@ -202,8 +240,6 @@ SECTIONS
     build/util.o (.text*)          /* .text* sections (code) */
     build/zelda_assets.o (.text)           /* .text sections (code) */
     build/zelda_assets.o (.text*)          /* .text* sections (code) */
-    build/zelda_rtl.o (.text)           /* .text sections (code) */
-    build/zelda_rtl.o (.text*)          /* .text* sections (code) */
     
     . = ALIGN(4);
     __extflash_text_end__ = .;
@@ -260,8 +296,6 @@ SECTIONS
     build/player_oam.o (.rodata*)          /* .text* sections (code) */
     build/poly.o (.rodata)           /* .text sections (code) */
     build/poly.o (.rodata*)          /* .text* sections (code) */
-    build/ppu.o (.rodata)           /* .text sections (code) */
-    build/ppu.o (.rodata*)          /* .text* sections (code) */
     build/select_file.o (.rodata)           /* .text sections (code) */
     build/select_file.o (.rodata*)          /* .text* sections (code) */
     build/spc_player.o (.rodata)           /* .text sections (code) */
@@ -369,6 +403,17 @@ SECTIONS
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
   } >DTCMRAM AT> FLASH
+  
+
+  /* Uninitialized data in DTCMRAM (e.g. PPU struct) */
+  . = ALIGN(4);
+  .dtcm_bss (NOLOAD) : 
+  {
+    . = ALIGN(4);
+    *(.dtcram_hot_bss)
+
+    . = ALIGN(4);
+  } >DTCMRAM
 
   
   /* Uninitialized data section */
