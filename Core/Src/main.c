@@ -184,6 +184,42 @@ __attribute__((optimize("-O0"))) void BSOD(BSOD_t fault, uint32_t pc, uint32_t l
 }
 
 
+// TODO Handle power off / deep sleep
+
+void GW_EnterDeepSleep(void)
+{
+  // Stop SAI DMA (audio)
+  //HAL_SAI_DMAStop(&hsai_BlockA1);
+
+  // Enable wakup by PIN1, the power button
+  HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN1_LOW);
+
+  lcd_backlight_off();
+
+  // Deinit the LCD, save power.
+  lcd_deinit(&hspi2);
+
+  // Leave a trace in RAM that we entered standby mode
+  //boot_magic = BOOT_MAGIC_STANDBY;
+
+  // Delay 500ms to give us a chance to attach a debugger in case
+  // we end up in a suspend-loop.
+  for (int i = 0; i < 10; i++) {
+      //wdog_refresh();
+      HAL_Delay(50);
+  }
+
+  HAL_PWR_EnterSTANDBYMode();
+
+  // Execution stops here, this function will not return
+  while(1) {
+    // If we for some reason survive until here, let's just reboot
+    HAL_NVIC_SystemReset();
+  }
+
+}
+
+
 /*int _write(int file, char *ptr, int len)
 {
   if (log_idx + len + 1 > sizeof(logbuf)) {
@@ -288,7 +324,7 @@ static void DrawPpuFrameWithPerf() {
   static float history[64], average;
   static int history_pos;
   uint32 before = HAL_GetTick();
-  ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags);
+  ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags | 0x80000000 | ((renderedFrameCtr & 0xf) << 24));
   uint32 after = HAL_GetTick();
   float v = (double)1000.0f / (after - before);
   average += v - history[history_pos];
@@ -386,6 +422,13 @@ void app_main(void)
 
         // Check inputs
         uint32_t buttons = buttons_get();
+
+        // Handle power off / deep sleep
+        if (buttons & B_POWER) {
+            //HAL_SAI_DMAStop(&hsai_BlockA1);
+            GW_EnterDeepSleep();
+        }
+
         HandleCommand(1, buttons & B_Up);
         HandleCommand(2, buttons & B_Down);
         HandleCommand(3, buttons & B_Left);
@@ -964,6 +1007,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : BTN_PWR_Pin */
+  GPIO_InitStruct.Pin = BTN_PWR_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(BTN_PWR_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PA4 PA5 PA6 */
   GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6;

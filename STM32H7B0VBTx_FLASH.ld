@@ -192,8 +192,8 @@ SECTIONS
     build/audio.o (.text*)          /* .text* sections (code) */
     build/config.o (.text)           /* .text sections (code) */
     build/config.o (.text*)          /* .text* sections (code) */
-    build/dma.o (.text)           /* .text sections (code) */
-    build/dma.o (.text*)          /* .text* sections (code) */
+    /*build/dma.o (.text)*/           /* .text sections (code) */
+    /*build/dma.o (.text*)*/          /* .text* sections (code) */
     build/dsp.o (.text)           /* .text sections (code) */
     build/dsp.o (.text*)          /* .text* sections (code) */
     build/dungeon.o (.text)           /* .text sections (code) */
@@ -266,8 +266,8 @@ SECTIONS
     build/audio.o (.rodata*)          /* .text* sections (code) */
     build/config.o (.rodata)           /* .text sections (code) */
     build/config.o (.rodata*)          /* .text* sections (code) */
-    build/dma.o (.rodata)           /* .text sections (code) */
-    build/dma.o (.rodata*)          /* .text* sections (code) */
+    /*build/dma.o (.rodata)*/           /* .text sections (code) */
+    /*build/dma.o (.rodata*)*/          /* .text* sections (code) */
     build/dsp.o (.rodata)           /* .text sections (code) */
     build/dsp.o (.rodata*)          /* .text* sections (code) */
     build/dungeon.o (.rodata)           /* .text sections (code) */

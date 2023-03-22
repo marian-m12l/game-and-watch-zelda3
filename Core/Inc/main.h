@@ -77,6 +77,8 @@ void BSOD(BSOD_t fault, uint32_t pc, uint32_t lr) __attribute__((noreturn));
 #define BTN_PAUSE_GPIO_Port GPIOC
 #define BTN_GAME_Pin GPIO_PIN_1
 #define BTN_GAME_GPIO_Port GPIOC
+#define BTN_PWR_Pin GPIO_PIN_0
+#define BTN_PWR_GPIO_Port GPIOA
 #define BTN_TIME_Pin GPIO_PIN_5
 #define BTN_TIME_GPIO_Port GPIOC
 #define BTN_A_Pin GPIO_PIN_9

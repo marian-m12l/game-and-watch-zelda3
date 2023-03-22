@@ -147,3 +147,15 @@ void lcd_init(SPI_HandleTypeDef *spi, LTDC_HandleTypeDef *ltdc) {
 
   HAL_LTDC_SetAddress(ltdc,(uint32_t) &framebuffer,0);
 }
+
+void lcd_deinit(SPI_HandleTypeDef *spi)
+{
+  // Chip select low.
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+  // 3.3v power to display *SET* to disable supply.
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_1, GPIO_PIN_SET);
+  // Disable 1.8v.
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_RESET);
+  // Pull reset line(?) low. (Flakey without this)
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_8, GPIO_PIN_RESET);
+}
