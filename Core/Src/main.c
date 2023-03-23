@@ -324,7 +324,7 @@ static void DrawPpuFrameWithPerf() {
   static float history[64], average;
   static int history_pos;
   uint32 before = HAL_GetTick();
-  ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags | 0x80000000 | ((renderedFrameCtr & 0xf) << 24));
+  ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags | RENDER_STEP_FLAGS | ((renderedFrameCtr & 0xf) << 24));
   uint32 after = HAL_GetTick();
   float v = (double)1000.0f / (after - before);
   average += v - history[history_pos];
@@ -338,7 +338,8 @@ static void DrawPpuFrameWithPerf() {
   }
 
   // Render frame counter with dots
-  for (uint16_t x = 1; x<=renderedFrameCtr; x++) {
+  memset(&framebuffer[235*320], 0, sizeof(uint16_t)*320*5);
+  for (uint16_t x = 1; x<=(renderedFrameCtr%(160*5)); x++) {
     framebuffer[235*320+x*2] = 0x07e0;  // FIXME WIDTH
   }
 
@@ -377,27 +378,27 @@ void app_main(void)
     lcd_fill_framebuffer(0x08, 0x0f, 0x08); // Light gray
 
     // TODO blink screen until button is pressed !!! -> better keep backlight ON and blink a color in the framebuffer !!!
-    bool go = false;
+    /*bool go = false;
     while(!go) {
         xip_from_flash(); // Red
         uint32_t buttons = buttons_get();
         if(buttons & B_A) {
           go = true;
         }
-    }
+    }*/
     
-    lcd_fill_framebuffer(0x08, 0x0f, 0x08); // Light gray
-    HAL_Delay(500);
+    /*lcd_fill_framebuffer(0x08, 0x0f, 0x08); // Light gray
+    HAL_Delay(500);*/
     
     LoadAssets();
     
-    lcd_fill_framebuffer(0x02, 0x04, 0x02); // Dark gray
-    HAL_Delay(500);
+    /*lcd_fill_framebuffer(0x02, 0x04, 0x02); // Dark gray
+    HAL_Delay(500);*/
     
     ZeldaInitialize();
     
-    lcd_fill_framebuffer(0x08, 0x0f, 0x08); // Light gray
-    HAL_Delay(500);
+    /*lcd_fill_framebuffer(0x08, 0x0f, 0x08); // Light gray
+    HAL_Delay(500);*/
 
     bool running = true;
     //uint32 lastTick = HAL_GetTick();
