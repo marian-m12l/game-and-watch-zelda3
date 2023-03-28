@@ -264,7 +264,7 @@ FLASH_MULTI ?= scripts/flash_multi.sh
 
 $(BUILD_DIR)/$(TARGET)_extflash.bin: $(BUILD_DIR)/$(TARGET).elf | $(BUILD_DIR)
 #	$(V)$(ECHO) [ BIN ] $(notdir $@)
-	$(V)$(BIN) -j ._itcram_hot -j ._extflash -j .extflash_text -j .extflash_rodata $< $(BUILD_DIR)/$(TARGET)_extflash.bin
+	$(V)$(BIN) -j ._itcram_hot -j ._dtcram_hot -j ._extflash -j .extflash_text -j .extflash_rodata $< $(BUILD_DIR)/$(TARGET)_extflash.bin
 
 $(BUILD_DIR)/$(TARGET)_intflash.bin: $(BUILD_DIR)/$(TARGET).elf | $(BUILD_DIR)
 #	$(V)$(ECHO) [ BIN ] $(notdir $@)

@@ -403,7 +403,21 @@ SECTIONS
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
   } >DTCMRAM AT> FLASH
-  
+
+ 
+  /* RODATA Copied from flash to ram at boot */
+  _sdtcram_hot = LOADADDR(._dtcram_hot);
+  ._dtcram_hot :
+  {
+    __dtcram_hot_start__ = .;
+    . = ALIGN(4);
+    *(.dtcram_hot_data)
+    . = ALIGN(4);
+    
+    __dtcram_hot_end__ = .;
+    __dtcram_end__ = .;
+  } >DTCMRAM AT> EXTFLASH
+   
 
   /* Uninitialized data in DTCMRAM (e.g. PPU struct) */
   . = ALIGN(4);

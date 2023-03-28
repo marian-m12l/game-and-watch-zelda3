@@ -599,6 +599,15 @@ int main(void)
   copy_areas2[3] = copy_areas2[2] - copy_areas2[1];
   memcpy_no_check((uint32_t *) copy_areas2[1], (uint32_t *) copy_areas2[0], copy_areas2[3]);
 
+  // Also copy DTCMRAM HOT section
+  
+  static uint32_t copy_areas3[4] __attribute__((used));
+  copy_areas3[0] = (uint32_t) &_sdtcram_hot;
+  copy_areas3[1] = (uint32_t) &__dtcram_hot_start__;
+  copy_areas3[2] = (uint32_t) &__dtcram_hot_end__;
+  copy_areas3[3] = copy_areas3[2] - copy_areas3[1];
+  memcpy_no_check((uint32_t *) copy_areas3[1], (uint32_t *) copy_areas3[0], copy_areas3[3]);
+
 
   /* USER CODE END 2 */
 
