@@ -20,9 +20,9 @@ TARGET = gw_base
 # building variables
 ######################################
 # debug build?
-DEBUG = 1
+DEBUG = 0
 # optimization
-OPT = -Og
+OPT = -O3
 
 
 INTFLASH_BANK ?= 2
@@ -49,9 +49,7 @@ C_SOURCES =  \
 Core/Src/lcd.c \
 Core/Src/buttons.c \
 Core/Src/main.c \
-Core/Src/xip_from_flash.c \
 Core/Src/gw_flash.c \
-Core/Src/flashapp.c \
 Core/Src/sha256.c \
 Core/Src/stm32h7xx_it.c \
 Core/Src/stm32h7xx_hal_msp.c \
@@ -82,7 +80,6 @@ Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_ospi.c \
 Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai.c \
 Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai_ex.c \
 Core/Src/porting/zelda_assets.c \
-zelda3/config.c \
 zelda3/zelda_rtl.c \
 zelda3/misc.c \
 zelda3/nmi.c \
@@ -264,7 +261,7 @@ FLASH_MULTI ?= scripts/flash_multi.sh
 
 $(BUILD_DIR)/$(TARGET)_extflash.bin: $(BUILD_DIR)/$(TARGET).elf | $(BUILD_DIR)
 #	$(V)$(ECHO) [ BIN ] $(notdir $@)
-	$(V)$(BIN) -j ._itcram_hot -j ._dtcram_hot -j ._extflash -j .extflash_text -j .extflash_rodata $< $(BUILD_DIR)/$(TARGET)_extflash.bin
+	$(V)$(BIN) -j ._itcram_hot -j ._dtcram_hot -j ._ram_exec -j ._extflash $< $(BUILD_DIR)/$(TARGET)_extflash.bin
 
 $(BUILD_DIR)/$(TARGET)_intflash.bin: $(BUILD_DIR)/$(TARGET).elf | $(BUILD_DIR)
 #	$(V)$(ECHO) [ BIN ] $(notdir $@)

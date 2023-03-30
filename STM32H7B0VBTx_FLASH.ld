@@ -55,20 +55,19 @@ ENTRY(Reset_Handler)
 /* Highest address of the user mode stack */
 _estack = 0x20020000;    /* end of RAM */
 /* Generate a link error if heap and stack don't fit into RAM */
-_Min_Heap_Size = 256 * 1024; /*126 * 1024;*/      /* required amount of heap  */
+_Min_Heap_Size = 0;      /* required amount of heap  */
 _Min_Stack_Size = 0x400; /* required amount of stack */
 
-
-/* TODO Heap in main RAM ? AHB RAM ? */
 
 
 /* Useful for scripts */
 __NULLPTR_LENGTH__  = 0x100;
 __ITCMRAM_LENGTH__  = 64K;
 __DTCMRAM_LENGTH__  = 128K;
+__RAM_LENGTH__   = 1024K;
 __RAM_UC_LENGTH__   = 300K;
 __RAM_CORE_LENGTH__ = 68K;
-__RAM_EMU_LENGTH__  = 1024K - __RAM_UC_LENGTH__ - __RAM_CORE_LENGTH__;
+__RAM_EMU_LENGTH__  = __RAM_LENGTH__ - __RAM_UC_LENGTH__ - __RAM_CORE_LENGTH__;
 __AHBRAM_LENGTH__   = 128K;
 __FLASH_LENGTH__    = 128K;
 
@@ -102,6 +101,7 @@ MEMORY
   ITCMRAM  (xrw) : ORIGIN = 0x00000000, LENGTH = 64K
   DTCMRAM  (xrw) : ORIGIN = 0x20000000, LENGTH = 128K
   RAM      (xrw) : ORIGIN = 0x24000000, LENGTH = 1024K
+  AHBRAM   (xrw) : ORIGIN = 0x30000000, LENGTH = 128K
   FLASH    (xr ) : ORIGIN = __INTFLASH__,  LENGTH = __FLASH_LENGTH__
   EXTFLASH (xr ) : ORIGIN = __EXTFLASH_START__,  LENGTH = __EXTFLASH_LENGTH__
 }
@@ -109,229 +109,124 @@ MEMORY
 /* Define output sections */
 SECTIONS
 {
-  ._itcram :
-  {
-    __itcram_start__ = .;
-    . = ALIGN(4);
-    *(.itcram_data)
-    . = ALIGN(4);
-    *(.itcram_text)
-    . = ALIGN(4);
-  } > ITCMRAM
-
-  /* Copied from flash to ram at boot */
   _sitcram_hot = LOADADDR(._itcram_hot);
   ._itcram_hot :
   {
-    __itcram_hot_start__ = .;
-    . = ALIGN(4);
-    *(.itcram_hot_data)
-    . = ALIGN(4);
-    *(.itcram_hot_text)
-    . = ALIGN(4);
-    *(.text_in_ram)
-    . = ALIGN(4);
-    *(.data_in_ram)
-    . = ALIGN(4);
-    
-    /*build/poly.o (.text)*/           /* .text sections (code) */
-    /*build/poly.o (.text*)*/          /* .text* sections (code) */
-    /*build/ppu.o (.text)*/           /* .text sections (code) */
-    /*build/ppu.o (.text*)*/          /* .text* sections (code) */
-    /*build/sprite.o (.text)*/           /* .text sections (code) */
-    /*build/sprite.o (.text*)*/          /* .text* sections (code) */
-    /*build/zelda_rtl.o (.text)*/           /* .text sections (code) */
-    /*build/zelda_rtl.o (.text*)*/          /* .text* sections (code) */
+    __extflash_start__ = .;
+    __itcram_start__ = .;
 
+    . = ALIGN(4);
+    __itcram_hot_start__ = .;
     __itcram_hot_end__ = .;
+    . = ALIGN(4);
+
     __itcram_end__ = .;
-  } >ITCMRAM AT> EXTFLASH  /* FIXME AT> EXTFLASH ??? */
+  } >ITCMRAM AT> EXTFLASH
   
+
   .lcd :
   {
+    __ram_start__ = .;
+
     . = ALIGN(4);
     *(.lcd)
     *(.audio)
     . = ALIGN(4);
-  }  > RAM
+    
+  } >RAM
 
 
-  __extflash_start__ = LOADADDR(._extflash);
+  _siramdata = LOADADDR(._ram_exec);
+  ._ram_exec :
+  {
+
+    . = ALIGN(4);
+    __ram_exec_start__ = .;
+    
+    build/attract.o (.text .text* .rodata .rodata*)
+    build/dma.o (.text .text* .rodata .rodata*)
+    build/dsp.o (.text .text* .rodata .rodata*)
+    build/dungeon.o (.text .text* .rodata .rodata*)
+    build/ending.o (.text .text* .rodata .rodata*)
+    build/hud.o (.text .text* .rodata .rodata*)
+    build/load_gfx.o (.text .text* .rodata .rodata*)
+    build/misc.o (.text .text* .rodata .rodata*)
+    build/overworld.o (.text .text* .rodata .rodata*)
+    build/player.o (.text .text* .rodata .rodata*)
+    build/player_oam.o (.text .text* .rodata .rodata*)
+    build/poly.o (.text .text* .rodata .rodata*)
+    build/ppu.o (.text .text* .rodata .rodata*)
+    build/select_file.o (.text .text* .rodata .rodata*)
+    build/sprite_main.o (.text .text* .rodata .rodata*)
+    build/sprite.o (.text .text* .rodata .rodata*)
+    build/zelda_rtl.o (.text .text* .rodata .rodata*)
+
+    __ram_exec_end__ = .;
+    . = ALIGN(4);
+    
+  } >RAM AT> EXTFLASH
+
+
+  /* Uninitialized data section */
+  . = ALIGN(4);
+  .bss :
+  {
+    /* This is used by the startup in order to initialize the .bss secion */
+    _sbss = .;         /* define a global symbol at bss start */
+    __bss_start__ = _sbss;
+    *(.bss)
+    *(.bss*)
+    *(COMMON)
+
+    . = ALIGN(4);
+    _ebss = .;         /* define a global symbol at bss end */
+    __bss_end__ = _ebss;
+  } >RAM
+
+
+  /* User_heap_stack section, used to check that there is enough RAM left */
+  ._user_heap_stack :
+  {
+    . = ALIGN(8);
+    PROVIDE ( end = . );
+    PROVIDE ( _end = . );
+    . = . + _Min_Heap_Size;
+    . = . + _Min_Stack_Size;
+    . = ALIGN(8);
+    __ram_end__ = .;
+  } > RAM
+
 
   ._extflash :
   {
     . = ALIGN(4);
-    _extflash = .;       /* define a global symbols to point at the external flash */
+    _extflash = .;
+    
+    build/ancilla.o (.text .text* .rodata .rodata*)
+    build/apu.o (.text .text* .rodata .rodata*)
+    build/audio.o (.text .text* .rodata .rodata*)
+    build/messaging.o (.text .text* .rodata .rodata*)
+    build/nmi.o (.text .text* .rodata .rodata*)
+    build/opus_decoder_amalgam.o (.text .text* .rodata .rodata*)
+    build/overlord.o (.text .text* .rodata .rodata*)
+    build/spc_player.o (.text .text* .rodata .rodata*)
+    build/tagalong.o (.text .text* .rodata .rodata*)
+    build/tile_detect.o (.text .text* .rodata .rodata*)
+    build/zelda_assets.o (.text .text* .rodata .rodata*)
 
-    __extflash_data_start__ = .;
-    . = ALIGN(4);
-    *(.extflash_data)
-    . = ALIGN(4);
-    __extflash_data_end__ = .;
-
+    __extflash_end__ = .;
   } >EXTFLASH
 
-
-  /* zelda3 .text section in EXTFLASH */
-  .extflash_text :
-  {
-    . = ALIGN(4);
-
-    __extflash_text_start__ = .;
-
-    build/xip_from_flash.o (.text)
-    build/xip_from_flash.o (.text*)
-
-    build/ancilla.o (.text)           /* .text sections (code) */
-    build/ancilla.o (.text*)          /* .text* sections (code) */
-    build/apu.o (.text)           /* .text sections (code) */
-    build/apu.o (.text*)          /* .text* sections (code) */
-    build/attract.o (.text)           /* .text sections (code) */
-    build/attract.o (.text*)          /* .text* sections (code) */
-    build/audio.o (.text)           /* .text sections (code) */
-    build/audio.o (.text*)          /* .text* sections (code) */
-    build/config.o (.text)           /* .text sections (code) */
-    build/config.o (.text*)          /* .text* sections (code) */
-    /*build/dma.o (.text)*/           /* .text sections (code) */
-    /*build/dma.o (.text*)*/          /* .text* sections (code) */
-    build/dsp.o (.text)           /* .text sections (code) */
-    build/dsp.o (.text*)          /* .text* sections (code) */
-    build/dungeon.o (.text)           /* .text sections (code) */
-    build/dungeon.o (.text*)          /* .text* sections (code) */
-    build/ending.o (.text)           /* .text sections (code) */
-    build/ending.o (.text*)          /* .text* sections (code) */
-    build/hud.o (.text)           /* .text sections (code) */
-    build/hud.o (.text*)          /* .text* sections (code) */
-    build/load_gfx.o (.text)           /* .text sections (code) */
-    build/load_gfx.o (.text*)          /* .text* sections (code) */
-    build/messaging.o (.text)           /* .text sections (code) */
-    build/messaging.o (.text*)          /* .text* sections (code) */
-    build/misc.o (.text)           /* .text sections (code) */
-    build/misc.o (.text*)          /* .text* sections (code) */
-    build/nmi.o (.text)           /* .text sections (code) */
-    build/nmi.o (.text*)          /* .text* sections (code) */
-    build/opus_decoder_amalgam.o (.text)           /* .text sections (code) */
-    build/opus_decoder_amalgam.o (.text*)          /* .text* sections (code) */
-    build/overlord.o (.text)           /* .text sections (code) */
-    build/overlord.o (.text*)          /* .text* sections (code) */
-    build/overworld.o (.text)           /* .text sections (code) */
-    build/overworld.o (.text*)          /* .text* sections (code) */
-    build/player.o (.text)           /* .text sections (code) */
-    build/player.o (.text*)          /* .text* sections (code) */
-    build/player_oam.o (.text)           /* .text sections (code) */
-    build/player_oam.o (.text*)          /* .text* sections (code) */
-    build/poly.o (.text)           /* .text sections (code) */
-    build/poly.o (.text*)          /* .text* sections (code) */
-    /*build/ppu.o (.text)*/           /* .text sections (code) */
-    /*build/ppu.o (.text*)*/          /* .text* sections (code) */
-    build/select_file.o (.text)           /* .text sections (code) */
-    build/select_file.o (.text*)          /* .text* sections (code) */
-    build/spc_player.o (.text)           /* .text sections (code) */
-    build/spc_player.o (.text*)          /* .text* sections (code) */
-    build/sprite.o (.text)           /* .text sections (code) */
-    build/sprite.o (.text*)          /* .text* sections (code) */
-    build/sprite_main.o (.text)           /* .text sections (code) */
-    build/sprite_main.o (.text*)          /* .text* sections (code) */
-    build/tagalong.o (.text)           /* .text sections (code) */
-    build/tagalong.o (.text*)          /* .text* sections (code) */
-    build/tile_detect.o (.text)           /* .text sections (code) */
-    build/tile_detect.o (.text*)          /* .text* sections (code) */
-    build/util.o (.text)           /* .text sections (code) */
-    build/util.o (.text*)          /* .text* sections (code) */
-    build/zelda_assets.o (.text)           /* .text sections (code) */
-    build/zelda_assets.o (.text*)          /* .text* sections (code) */
-    
-    . = ALIGN(4);
-    __extflash_text_end__ = .;
-    
-  } >EXTFLASH
-
-  /* zelda3 .rodata section in EXTFLASH */
-  .extflash_rodata :
-  {
-    . = ALIGN(4);
-
-    __extflash_rodata_start__ = .;
-
-    build/xip_from_flash.o (.rodata)
-    build/xip_from_flash.o (.rodata*)
-
-    build/ancilla.o (.rodata)           /* .text sections (code) */
-    build/ancilla.o (.rodata*)          /* .text* sections (code) */
-    build/apu.o (.rodata)           /* .text sections (code) */
-    build/apu.o (.rodata*)          /* .text* sections (code) */
-    build/attract.o (.rodata)           /* .text sections (code) */
-    build/attract.o (.rodata*)          /* .text* sections (code) */
-    build/audio.o (.rodata)           /* .text sections (code) */
-    build/audio.o (.rodata*)          /* .text* sections (code) */
-    build/config.o (.rodata)           /* .text sections (code) */
-    build/config.o (.rodata*)          /* .text* sections (code) */
-    /*build/dma.o (.rodata)*/           /* .text sections (code) */
-    /*build/dma.o (.rodata*)*/          /* .text* sections (code) */
-    build/dsp.o (.rodata)           /* .text sections (code) */
-    build/dsp.o (.rodata*)          /* .text* sections (code) */
-    build/dungeon.o (.rodata)           /* .text sections (code) */
-    build/dungeon.o (.rodata*)          /* .text* sections (code) */
-    build/ending.o (.rodata)           /* .text sections (code) */
-    build/ending.o (.rodata*)          /* .text* sections (code) */
-    build/hud.o (.rodata)           /* .text sections (code) */
-    build/hud.o (.rodata*)          /* .text* sections (code) */
-    build/load_gfx.o (.rodata)           /* .text sections (code) */
-    build/load_gfx.o (.rodata*)          /* .text* sections (code) */
-    build/messaging.o (.rodata)           /* .text sections (code) */
-    build/messaging.o (.rodata*)          /* .text* sections (code) */
-    build/misc.o (.rodata)           /* .text sections (code) */
-    build/misc.o (.rodata*)          /* .text* sections (code) */
-    build/nmi.o (.rodata)           /* .text sections (code) */
-    build/nmi.o (.rodata*)          /* .text* sections (code) */
-    build/opus_decoder_amalgam.o (.rodata)           /* .text sections (code) */
-    build/opus_decoder_amalgam.o (.rodata*)          /* .text* sections (code) */
-    build/overlord.o (.rodata)           /* .text sections (code) */
-    build/overlord.o (.rodata*)          /* .text* sections (code) */
-    build/overworld.o (.rodata)           /* .text sections (code) */
-    build/overworld.o (.rodata*)          /* .text* sections (code) */
-    build/player.o (.rodata)           /* .text sections (code) */
-    build/player.o (.rodata*)          /* .text* sections (code) */
-    build/player_oam.o (.rodata)           /* .text sections (code) */
-    build/player_oam.o (.rodata*)          /* .text* sections (code) */
-    build/poly.o (.rodata)           /* .text sections (code) */
-    build/poly.o (.rodata*)          /* .text* sections (code) */
-    build/select_file.o (.rodata)           /* .text sections (code) */
-    build/select_file.o (.rodata*)          /* .text* sections (code) */
-    build/spc_player.o (.rodata)           /* .text sections (code) */
-    build/spc_player.o (.rodata*)          /* .text* sections (code) */
-    build/sprite.o (.rodata)           /* .text sections (code) */
-    build/sprite.o (.rodata*)          /* .text* sections (code) */
-    build/sprite_main.o (.rodata)           /* .text sections (code) */
-    build/sprite_main.o (.rodata*)          /* .text* sections (code) */
-    build/tagalong.o (.rodata)           /* .text sections (code) */
-    build/tagalong.o (.rodata*)          /* .text* sections (code) */
-    build/tile_detect.o (.rodata)           /* .text sections (code) */
-    build/tile_detect.o (.rodata*)          /* .text* sections (code) */
-    build/util.o (.rodata)           /* .text sections (code) */
-    build/util.o (.rodata*)          /* .text* sections (code) */
-    build/zelda_assets.o (.rodata)           /* .text sections (code) */
-    build/zelda_assets.o (.rodata*)          /* .text* sections (code) */
-    build/zelda_rtl.o (.rodata)           /* .text sections (code) */
-    build/zelda_rtl.o (.rodata*)          /* .text* sections (code) */
-    
-    . = ALIGN(4);
-    __extflash_rodata_end__ = .;
-    
-  } >EXTFLASH
-
-
-  __extflash_end__ = .;
   
-
-
-
   /* The startup code goes first into FLASH */
   .isr_vector :
   {
+    __flash_start__ = .;
+
     . = ALIGN(4);
     KEEP(*(.isr_vector)) /* Startup code */
     . = ALIGN(4);
+    
   } >FLASH
 
 
@@ -389,12 +284,15 @@ SECTIONS
     PROVIDE_HIDDEN (__fini_array_end = .);
   } >FLASH
 
+
   /* used by the startup to initialize data */
   _sidata = LOADADDR(.data);
 
   /* Initialized data sections goes into RAM, load LMA copy after code */
   .data : 
   {
+    __dtcram_start__ = .;
+
     . = ALIGN(4);
     _sdata = .;        /* create a global symbol at data start */
     *(.data)           /* .data sections */
@@ -404,65 +302,25 @@ SECTIONS
     _edata = .;        /* define a global symbol at data end */
   } >DTCMRAM AT> FLASH
 
+  __flash_end__ = .;
+
  
   /* RODATA Copied from flash to ram at boot */
   _sdtcram_hot = LOADADDR(._dtcram_hot);
   ._dtcram_hot :
   {
     __dtcram_hot_start__ = .;
-    . = ALIGN(4);
-    *(.dtcram_hot_data)
-    . = ALIGN(4);
-    
     __dtcram_hot_end__ = .;
-    __dtcram_end__ = .;
   } >DTCMRAM AT> EXTFLASH
-   
-
-  /* Uninitialized data in DTCMRAM (e.g. PPU struct) */
-  . = ALIGN(4);
-  .dtcm_bss (NOLOAD) : 
-  {
-    . = ALIGN(4);
-    *(.dtcram_hot_bss)
-
-    . = ALIGN(4);
-  } >DTCMRAM
-
   
-  /* Uninitialized data section */
-  . = ALIGN(4);
-  .bss :
-  {
-    /* This is used by the startup in order to initialize the .bss secion */
-    _sbss = .;         /* define a global symbol at bss start */
-    __bss_start__ = _sbss;
-    *(.bss)
-    *(.bss*)
-    *(COMMON)
-
-    . = ALIGN(4);
-    _ebss = .;         /* define a global symbol at bss end */
-    __bss_end__ = _ebss;
-  } >RAM /* FIXME  >DTCMRAM */
 
   ._persistent (NOLOAD) :
   {
     . = ALIGN(8);
     *(.persistent)
     . = ALIGN(8);
+    __dtcram_end__ = .;
   } >DTCMRAM
-
-  /* User_heap_stack section, used to check that there is enough RAM left */
-  ._user_heap_stack :
-  {
-    . = ALIGN(8);
-    PROVIDE ( end = . );
-    PROVIDE ( _end = . );
-    . = . + _Min_Heap_Size;
-    . = . + _Min_Stack_Size;
-    . = ALIGN(8);
-  } > RAM /* FIXME >DTCMRAM */
 
   
 

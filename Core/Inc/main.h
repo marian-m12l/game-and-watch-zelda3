@@ -107,8 +107,8 @@ void BSOD(BSOD_t fault, uint32_t pc, uint32_t lr) __attribute__((noreturn));
 #define PERSISTENT __attribute__((used)) __attribute__((section (".persistent")))
 
 
-#define RENDER_ROWS_STEP 4
-#define RENDER_COLS_STEP 4
+#define RENDER_ROWS_STEP 1
+#define RENDER_COLS_STEP 1
 #define RENDER_STEP_FLAGS ((((RENDER_ROWS_STEP-1) & 0x3) << 30) | (((RENDER_COLS_STEP-1) & 0x3) << 28))
 
 

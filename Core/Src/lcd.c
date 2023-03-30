@@ -3,7 +3,6 @@
 #include "main.h"
 
 uint16_t framebuffer[320 * 240];
-uint16_t framebuffer2[320 * 240];
 
 void lcd_backlight_off() {
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);

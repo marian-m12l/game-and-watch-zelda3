@@ -25,10 +25,7 @@
 #include "buttons.h"  // FIXME replace with gw_buttons ???
 #include "lcd.h"      // FIXME replace with gw_lcd ??? handle dual framebuffer ???
 
-#include "xip_from_flash.h"
-
 #include "gw_flash.h"
-#include "flashapp.h"
 
 #include "gw_linker.h"
 
@@ -70,13 +67,8 @@ SPI_HandleTypeDef hspi2;
 /* USER CODE BEGIN PV */
 
 
-#define BOOT_MODE_APP      0
-#define BOOT_MODE_FLASHAPP 1
-
 //char logbuf[1024 * 4] PERSISTENT __attribute__((aligned(4)));
 //uint32_t log_idx PERSISTENT;
-
-PERSISTENT volatile uint32_t boot_magic;
 
 //uint16_t audiobuffer[48000] __attribute__((section (".audio")));
 
@@ -172,9 +164,6 @@ __attribute__((optimize("-O0"))) void BSOD(BSOD_t fault, uint32_t pc, uint32_t l
     //wdog_refresh();
   }
 
-  // Encode the fault type in the boot magic
-  boot_magic = BOOT_MAGIC_BSOD | (fault & 0xffff);
-
   HAL_NVIC_SystemReset();
 
   // Does not return
@@ -232,13 +221,6 @@ void GW_EnterDeepSleep(void)
 
   return len;
 }*/
-
-
-void boot_magic_set(uint32_t magic)
-{
-  boot_magic = magic;
-}
-
 
 
 // Workaround for being able to run with -D_FORTIFY_SOURCE=1
@@ -373,32 +355,12 @@ static void HandleCommand(uint32 j, bool pressed) {
 
 void app_main(void)
 {
-    //printf("[main.c] app_main\n");
 
     lcd_fill_framebuffer(0x08, 0x0f, 0x08); // Light gray
-
-    // TODO blink screen until button is pressed !!! -> better keep backlight ON and blink a color in the framebuffer !!!
-    /*bool go = false;
-    while(!go) {
-        xip_from_flash(); // Red
-        uint32_t buttons = buttons_get();
-        if(buttons & B_A) {
-          go = true;
-        }
-    }*/
-    
-    /*lcd_fill_framebuffer(0x08, 0x0f, 0x08); // Light gray
-    HAL_Delay(500);*/
     
     LoadAssets();
     
-    /*lcd_fill_framebuffer(0x02, 0x04, 0x02); // Dark gray
-    HAL_Delay(500);*/
-    
     ZeldaInitialize();
-    
-    /*lcd_fill_framebuffer(0x08, 0x0f, 0x08); // Light gray
-    HAL_Delay(500);*/
 
     bool running = true;
     //uint32 lastTick = HAL_GetTick();
@@ -505,42 +467,7 @@ void app_main(void)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
-  
-  uint8_t boot_mode = BOOT_MODE_APP;
-
-  for(int i = 0; i < 1000000; i++) {
-    __NOP();
-  }
-
-  switch (boot_magic) {
-  case BOOT_MAGIC_STANDBY:
-    //printf("Boot from standby.\nboot_magic=0x%08lx\n", boot_magic);
-    break;
-  case BOOT_MAGIC_RESET:
-    //printf("Boot from warm reset.\nboot_magic=0x%08lx\n", boot_magic);
-    break;
-  case BOOT_MAGIC_WATCHDOG:
-    //printf("Boot from watchdog reset!\nboot_magic=0x%08lx\n", boot_magic);
-    //trigger_wdt_bsod = 1;
-    break;
-  case BOOT_MAGIC_FLASHAPP:
-    boot_mode = BOOT_MODE_FLASHAPP;
-    break;
-  default:
-    if ((boot_magic & BOOT_MAGIC_BSOD_MASK) == BOOT_MAGIC_BSOD) {
-      uint16_t fault_idx = boot_magic & 0xffff;
-      const char *fault = (fault_idx < BSOD_COUNT) ? fault_list[fault_idx] : "UNKOWN";
-      //printf("Boot from BSOD:\nboot_magic=0x%08lx %s\n", boot_magic, fault);
-    } else {
-      //printf("Boot from brownout?\nboot_magic=0x%08lx\n", boot_magic);
-    }
-    break;
-  }
-
-  // Leave a trace that indicates a warm reset
-  boot_magic = BOOT_MAGIC_RESET;
-  
+ 
 
   /* USER CODE END 1 */
 
@@ -581,14 +508,14 @@ int main(void)
   lcd_init(&hspi2, &hltdc);
   lcd_fill_framebuffer(0x00, 0x3f, 0x00); // Green
 
-  // TODO Copy instructions and data from extflash to axiram
-/*  void *copy_areas[3];
+  // Copy instructions and data from extflash to axiram
+  void *copy_areas[3];
 
   copy_areas[0] = &_siramdata;  // 0x90000000
   copy_areas[1] = &__ram_exec_start__;  // 0x24000000
   copy_areas[2] = &__ram_exec_end__;  // 0x24000000 + length
   memcpy_no_check(copy_areas[1], copy_areas[0], copy_areas[2] - copy_areas[1]);
-*/
+
 
   // Copy ITCRAM HOT section
   
@@ -625,20 +552,7 @@ int main(void)
     Error_Handler();
   }
 
-  printf("[main.c] Booting with mode: %d\n", boot_mode);
-
-  switch (boot_mode) {
-  case BOOT_MODE_APP:
-    //wdog_enable();
-    // Launch the emulator
-    app_main();
-    break;
-  case BOOT_MODE_FLASHAPP:
-    flashapp_main();
-    break;
-  default:
-    break;
-  }
+  app_main();
 
   /* USER CODE END 3 */
 }
