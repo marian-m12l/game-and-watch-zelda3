@@ -250,7 +250,8 @@ $(BUILD_DIR):
 
 OPENOCD ?= openocd
 OCDIFACE ?= scripts/interface_jlink.cfg #interface/jlink.cfg
-FLASH_MULTI ?= scripts/flash_multi.sh
+ADAPTER=jlink
+FLASH_MULTI ?= ../game-and-watch-flashloader/flash_multi.sh
 
 #flash: $(BUILD_DIR)/$(TARGET).bin
 #	dd if=$(BUILD_DIR)/$(TARGET).bin of=$(BUILD_DIR)/$(TARGET)_flash.bin bs=1024 count=128
@@ -276,13 +277,13 @@ flash_intflash: $(BUILD_DIR)/$(TARGET)_intflash.bin
 .PHONY: flash_intflash
 
 flash_extflash: $(BUILD_DIR)/$(TARGET)_extflash.bin
-	$(FLASH_MULTI) $(BUILD_DIR)/$(TARGET)_extflash.bin $(EXTFLASH_OFFSET)
+	ADAPTER=${ADAPTER} $(FLASH_MULTI) $(BUILD_DIR)/$(TARGET)_extflash.bin $(EXTFLASH_OFFSET)
 .PHONY: flash_extflash
 
 # Programs both the external and internal flash.
 flash:
-	$(V)$(MAKE) flash_intflash
 	$(V)$(MAKE) flash_extflash
+	$(V)$(MAKE) flash_intflash
 #	$(V)$(RESET_DBGMCU_CMD)
 	$(V)$(MAKE) reset_dbgmcu 
 .PHONY: flash
