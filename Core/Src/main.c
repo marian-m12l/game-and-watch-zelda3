@@ -31,6 +31,7 @@
 
 // FIXME ??? #include "porting.h"
 #include "zelda_assets.h"
+#include "zelda_assets_bis.h"
 
 #include "zelda3/assets.h"
 #include "zelda3/config.h"
@@ -291,6 +292,25 @@ static void LoadAssets() {
     offset += size;
   }
 
+  //Overload some assets with assets in ram
+  size_t length_bis = zelda_assets_bis_length;
+  uint8 *data_bis = zelda_assets_bis;
+  //static const uint8_t assets_in_ram[] = { 10, 20, 30 };
+  
+  offset = 88 + kNumberOfAssets * 4 + *(uint32 *)(data_bis + 84);
+
+  for (size_t i = 0; i < 1 /* FIXME kNumberOfAssets*/; i++) {
+  //for (uint8_t index = 0; index < 3; index++) {
+  //  size_t i = assets_in_ram[index];
+    uint32 size = *(uint32 *)(data_bis + 88 + i * 4);
+    offset = (offset + 3) & ~3;
+    if ((uint64)offset + size > length_bis)
+      Die("Assets file corruption");
+    g_asset_sizes[i] = size;
+    g_asset_ptrs[i] = data_bis + offset;
+    offset += size;
+  }
+
 }
 
 
@@ -534,6 +554,15 @@ int main(void)
   copy_areas3[2] = (uint32_t) &__dtcram_hot_end__;
   copy_areas3[3] = copy_areas3[2] - copy_areas3[1];
   memcpy_no_check((uint32_t *) copy_areas3[1], (uint32_t *) copy_areas3[0], copy_areas3[3]);
+
+  // Also copy AHBRAM HOT section
+  
+  static uint32_t copy_areas4[4] __attribute__((used));
+  copy_areas4[0] = (uint32_t) &_sahbram_hot;
+  copy_areas4[1] = (uint32_t) &__ahbram_hot_start__;
+  copy_areas4[2] = (uint32_t) &__ahbram_hot_end__;
+  copy_areas4[3] = copy_areas4[2] - copy_areas4[1];
+  memcpy_no_check((uint32_t *) copy_areas4[1], (uint32_t *) copy_areas4[0], copy_areas4[3]);
 
 
   /* USER CODE END 2 */

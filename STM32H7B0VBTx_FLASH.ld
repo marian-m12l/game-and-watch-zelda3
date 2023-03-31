@@ -124,16 +124,48 @@ SECTIONS
   } >ITCMRAM AT> EXTFLASH
   
 
-  .lcd :
+ 
+  /* Copied from flash to ram at boot */
+  _sdtcram_hot = LOADADDR(._dtcram_hot);
+  ._dtcram_hot :
   {
-    __ram_start__ = .;
+    __dtcram_start__ = .;
+    __dtcram_hot_start__ = .;
 
-    . = ALIGN(4);
-    *(.lcd)
-    *(.audio)
-    . = ALIGN(4);
+    build/zelda_assets_bis.o (.text .text* .rodata .rodata*)
+
+    __dtcram_hot_end__ = .;
+  } >DTCMRAM AT> EXTFLASH
+  
+
+  ._persistent (NOLOAD) :
+  {
+    . = ALIGN(8);
+    *(.persistent)
+    . = ALIGN(8);
+  } >DTCMRAM
+
+  
+
+  /* Copied from flash to ram at boot */
+  _sahbram_hot = LOADADDR(._ahbram_hot);
+  ._ahbram_hot :
+  {
+    __ahbram_start__ = .;
+
+    __ahbram_hot_start__ = .;
+
+    build/ancilla.o (.text .text* .rodata .rodata*)
+    build/nmi.o (.text .text* .rodata .rodata*)
+    build/overlord.o (.text .text* .rodata .rodata*)
+    build/spc_player.o (.text .text* .rodata .rodata*)
+    build/tagalong.o (.text .text* .rodata .rodata*)
+    build/tile_detect.o (.text .text* .rodata .rodata*)
+
+    __ahbram_hot_end__ = .;
     
-  } >RAM
+    __ahbram_end__ = .;
+  } >AHBRAM AT> EXTFLASH
 
 
   _siramdata = LOADADDR(._ram_exec);
@@ -202,16 +234,10 @@ SECTIONS
     . = ALIGN(4);
     _extflash = .;
     
-    build/ancilla.o (.text .text* .rodata .rodata*)
     build/apu.o (.text .text* .rodata .rodata*)
     build/audio.o (.text .text* .rodata .rodata*)
     build/messaging.o (.text .text* .rodata .rodata*)
-    build/nmi.o (.text .text* .rodata .rodata*)
     build/opus_decoder_amalgam.o (.text .text* .rodata .rodata*)
-    build/overlord.o (.text .text* .rodata .rodata*)
-    build/spc_player.o (.text .text* .rodata .rodata*)
-    build/tagalong.o (.text .text* .rodata .rodata*)
-    build/tile_detect.o (.text .text* .rodata .rodata*)
     build/zelda_assets.o (.text .text* .rodata .rodata*)
 
     __extflash_end__ = .;
@@ -291,7 +317,6 @@ SECTIONS
   /* Initialized data sections goes into RAM, load LMA copy after code */
   .data : 
   {
-    __dtcram_start__ = .;
 
     . = ALIGN(4);
     _sdata = .;        /* create a global symbol at data start */
@@ -300,28 +325,11 @@ SECTIONS
 
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
+    
+    __dtcram_end__ = .;
   } >DTCMRAM AT> FLASH
 
   __flash_end__ = .;
-
- 
-  /* RODATA Copied from flash to ram at boot */
-  _sdtcram_hot = LOADADDR(._dtcram_hot);
-  ._dtcram_hot :
-  {
-    __dtcram_hot_start__ = .;
-    __dtcram_hot_end__ = .;
-  } >DTCMRAM AT> EXTFLASH
-  
-
-  ._persistent (NOLOAD) :
-  {
-    . = ALIGN(8);
-    *(.persistent)
-    . = ALIGN(8);
-    __dtcram_end__ = .;
-  } >DTCMRAM
-
   
 
   /* Remove information from the standard libraries */
