@@ -31,7 +31,7 @@
 
 // FIXME ??? #include "porting.h"
 #include "zelda_assets.h"
-#include "zelda_assets_bis.h"
+#include "zelda_assets_in_ram.h"
 
 #include "zelda3/assets.h"
 #include "zelda3/config.h"
@@ -293,21 +293,21 @@ static void LoadAssets() {
   }
 
   //Overload some assets with assets in ram
-  size_t length_bis = zelda_assets_bis_length;
-  uint8 *data_bis = zelda_assets_bis;
-  //static const uint8_t assets_in_ram[] = { 10, 20, 30 };
-  
-  offset = 88 + kNumberOfAssets * 4 + *(uint32 *)(data_bis + 84);
+  size_t length_ram_assets = zelda_ram_assets_length;
+  uint8 *data_ram_assets = zelda_ram_assets;
 
-  for (size_t i = 0; i < 1 /* FIXME kNumberOfAssets*/; i++) {
-  //for (uint8_t index = 0; index < 3; index++) {
-  //  size_t i = assets_in_ram[index];
-    uint32 size = *(uint32 *)(data_bis + 88 + i * 4);
+  uint32 number_of_ram_assets = *(uint32 *)(data_ram_assets);
+  
+  offset = 4 + number_of_ram_assets * 8;
+
+  for (size_t i = 0; i < number_of_ram_assets; i++) {
+    uint32 index = *(uint32 *)(data_ram_assets + 4 + i * 8);
+    uint32 size = *(uint32 *)(data_ram_assets + 4 + i * 8 + 4);
     offset = (offset + 3) & ~3;
-    if ((uint64)offset + size > length_bis)
-      Die("Assets file corruption");
-    g_asset_sizes[i] = size;
-    g_asset_ptrs[i] = data_bis + offset;
+    if ((uint64)offset + size > length_ram_assets)
+      Die("Assets in RAM file corruption");
+    g_asset_sizes[index] = size;
+    g_asset_ptrs[index] = data_ram_assets + offset;
     offset += size;
   }
 
@@ -529,40 +529,34 @@ int main(void)
   lcd_fill_framebuffer(0x00, 0x3f, 0x00); // Green
 
   // Copy instructions and data from extflash to axiram
-  void *copy_areas[3];
-
+  static uint32_t copy_areas[4] __attribute__((used));
   copy_areas[0] = &_siramdata;  // 0x90000000
   copy_areas[1] = &__ram_exec_start__;  // 0x24000000
   copy_areas[2] = &__ram_exec_end__;  // 0x24000000 + length
-  memcpy_no_check(copy_areas[1], copy_areas[0], copy_areas[2] - copy_areas[1]);
+  copy_areas[3] = copy_areas[2] - copy_areas[1];
+  memcpy_no_check(copy_areas[1], copy_areas[0], copy_areas[3]);
 
 
   // Copy ITCRAM HOT section
-  
-  static uint32_t copy_areas2[4] __attribute__((used));
-  copy_areas2[0] = (uint32_t) &_sitcram_hot;
-  copy_areas2[1] = (uint32_t) &__itcram_hot_start__;
-  copy_areas2[2] = (uint32_t) &__itcram_hot_end__;
-  copy_areas2[3] = copy_areas2[2] - copy_areas2[1];
-  memcpy_no_check((uint32_t *) copy_areas2[1], (uint32_t *) copy_areas2[0], copy_areas2[3]);
+  copy_areas[0] = (uint32_t) &_sitcram_hot;
+  copy_areas[1] = (uint32_t) &__itcram_hot_start__;
+  copy_areas[2] = (uint32_t) &__itcram_hot_end__;
+  copy_areas[3] = copy_areas[2] - copy_areas[1];
+  memcpy_no_check((uint32_t *) copy_areas[1], (uint32_t *) copy_areas[0], copy_areas[3]);
 
   // Also copy DTCMRAM HOT section
-  
-  static uint32_t copy_areas3[4] __attribute__((used));
-  copy_areas3[0] = (uint32_t) &_sdtcram_hot;
-  copy_areas3[1] = (uint32_t) &__dtcram_hot_start__;
-  copy_areas3[2] = (uint32_t) &__dtcram_hot_end__;
-  copy_areas3[3] = copy_areas3[2] - copy_areas3[1];
-  memcpy_no_check((uint32_t *) copy_areas3[1], (uint32_t *) copy_areas3[0], copy_areas3[3]);
+  copy_areas[0] = (uint32_t) &_sdtcram_hot;
+  copy_areas[1] = (uint32_t) &__dtcram_hot_start__;
+  copy_areas[2] = (uint32_t) &__dtcram_hot_end__;
+  copy_areas[3] = copy_areas[2] - copy_areas[1];
+  memcpy_no_check((uint32_t *) copy_areas[1], (uint32_t *) copy_areas[0], copy_areas[3]);
 
   // Also copy AHBRAM HOT section
-  
-  static uint32_t copy_areas4[4] __attribute__((used));
-  copy_areas4[0] = (uint32_t) &_sahbram_hot;
-  copy_areas4[1] = (uint32_t) &__ahbram_hot_start__;
-  copy_areas4[2] = (uint32_t) &__ahbram_hot_end__;
-  copy_areas4[3] = copy_areas4[2] - copy_areas4[1];
-  memcpy_no_check((uint32_t *) copy_areas4[1], (uint32_t *) copy_areas4[0], copy_areas4[3]);
+  copy_areas[0] = (uint32_t) &_sahbram_hot;
+  copy_areas[1] = (uint32_t) &__ahbram_hot_start__;
+  copy_areas[2] = (uint32_t) &__ahbram_hot_end__;
+  copy_areas[3] = copy_areas[2] - copy_areas[1];
+  memcpy_no_check((uint32_t *) copy_areas[1], (uint32_t *) copy_areas[0], copy_areas[3]);
 
 
   /* USER CODE END 2 */

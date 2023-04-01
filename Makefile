@@ -20,7 +20,7 @@ TARGET = gw_base
 # building variables
 ######################################
 # debug build?
-DEBUG = 0
+DEBUG = 1
 # optimization
 OPT = -O3
 
@@ -50,7 +50,6 @@ Core/Src/lcd.c \
 Core/Src/buttons.c \
 Core/Src/main.c \
 Core/Src/gw_flash.c \
-Core/Src/sha256.c \
 Core/Src/stm32h7xx_it.c \
 Core/Src/stm32h7xx_hal_msp.c \
 Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_cortex.c \
@@ -80,7 +79,7 @@ Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_ospi.c \
 Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai.c \
 Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai_ex.c \
 Core/Src/porting/zelda_assets.c \
-Core/Src/porting/zelda_assets_bis.c \
+Core/Src/porting/zelda_assets_in_ram.c \
 zelda3/zelda_rtl.c \
 zelda3/misc.c \
 zelda3/nmi.c \
@@ -102,7 +101,6 @@ zelda3/ancilla.c \
 zelda3/player.c \
 zelda3/sprite.c \
 zelda3/player_oam.c \
-zelda3/snes/apu.c \
 zelda3/snes/dsp.c \
 zelda3/sprite_main.c \
 zelda3/tagalong.c \
@@ -182,7 +180,7 @@ CFLAGS = $(MCU) $(C_DEFS) $(C_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-
 CFLAGS += -DHEADLESS
 
 ifeq ($(DEBUG), 1)
-CFLAGS += -g -gdwarf-2 -O0
+CFLAGS += -g -gdwarf-2 #-O0
 endif
 
 

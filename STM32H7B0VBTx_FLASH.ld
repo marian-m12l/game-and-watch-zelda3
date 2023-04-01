@@ -117,6 +117,14 @@ SECTIONS
 
     . = ALIGN(4);
     __itcram_hot_start__ = .;
+    
+    build/dma.o (.text .text*)
+    build/messaging.o (.text .text*)
+    build/player_oam.o (.text .text*)
+    build/poly.o (.text .text*)
+    build/ppu.o (.text .text*)
+    build/zelda_rtl.o (.text .text*)
+
     __itcram_hot_end__ = .;
     . = ALIGN(4);
 
@@ -131,8 +139,13 @@ SECTIONS
   {
     __dtcram_start__ = .;
     __dtcram_hot_start__ = .;
-
-    build/zelda_assets_bis.o (.text .text* .rodata .rodata*)
+    
+    build/dma.o (.rodata .rodata*)
+    build/messaging.o (.rodata .rodata*)
+    build/player_oam.o (.rodata .rodata*)
+    build/poly.o (.rodata .rodata*)
+    build/ppu.o (.rodata .rodata*)
+    build/zelda_rtl.o (.rodata .rodata*)
 
     __dtcram_hot_end__ = .;
   } >DTCMRAM AT> EXTFLASH
@@ -176,7 +189,6 @@ SECTIONS
     __ram_exec_start__ = .;
     
     build/attract.o (.text .text* .rodata .rodata*)
-    build/dma.o (.text .text* .rodata .rodata*)
     build/dsp.o (.text .text* .rodata .rodata*)
     build/dungeon.o (.text .text* .rodata .rodata*)
     build/ending.o (.text .text* .rodata .rodata*)
@@ -185,13 +197,11 @@ SECTIONS
     build/misc.o (.text .text* .rodata .rodata*)
     build/overworld.o (.text .text* .rodata .rodata*)
     build/player.o (.text .text* .rodata .rodata*)
-    build/player_oam.o (.text .text* .rodata .rodata*)
-    build/poly.o (.text .text* .rodata .rodata*)
-    build/ppu.o (.text .text* .rodata .rodata*)
     build/select_file.o (.text .text* .rodata .rodata*)
-    build/sprite_main.o (.text .text* .rodata .rodata*)
     build/sprite.o (.text .text* .rodata .rodata*)
-    build/zelda_rtl.o (.text .text* .rodata .rodata*)
+    build/sprite_main.o (.text .text* .rodata .rodata*)
+    
+    build/zelda_assets_in_ram.o (.text .text* .rodata .rodata*)
 
     __ram_exec_end__ = .;
     . = ALIGN(4);
@@ -234,10 +244,9 @@ SECTIONS
     . = ALIGN(4);
     _extflash = .;
     
-    build/apu.o (.text .text* .rodata .rodata*)
     build/audio.o (.text .text* .rodata .rodata*)
-    build/messaging.o (.text .text* .rodata .rodata*)
     build/opus_decoder_amalgam.o (.text .text* .rodata .rodata*)
+    
     build/zelda_assets.o (.text .text* .rodata .rodata*)
 
     __extflash_end__ = .;
