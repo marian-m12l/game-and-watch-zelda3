@@ -35,6 +35,7 @@
 
 #include "zelda3/assets.h"
 #include "zelda3/config.h"
+#include "zelda3/snes/ppu.h"
 #include "zelda3/types.h"
 #include "zelda3/zelda_rtl.h"
 
@@ -242,7 +243,7 @@ static uint8 g_gamepad_buttons;
 static int g_input1_state;
 static bool g_display_perf;
 static int g_curr_fps;
-static int g_ppu_render_flags = 0;
+static int g_ppu_render_flags = kPpuRenderFlags_NewRenderer;
 static int g_snes_width, g_snes_height;
 //static int g_sdl_audio_mixer_volume = SDL_MIX_MAXVOLUME;
 //static struct RendererFuncs g_renderer_funcs;
@@ -335,7 +336,7 @@ static void DrawPpuFrameWithPerf() {
   g_curr_fps = average * (1.0f / 64);
 
   // Render fps with dots
-  for (uint8_t y = 1; y<=30; y++) {
+  for (uint8_t y = 1; y<=60; y++) {
     framebuffer[y*2*320+300] = (y <= g_curr_fps ? 0x07e0 : 0xf800);  // FIXME WIDTH
   }
 
@@ -416,14 +417,14 @@ void app_main(void)
         HandleCommand(2, buttons & B_Down);
         HandleCommand(3, buttons & B_Left);
         HandleCommand(4, buttons & B_Right);
-        HandleCommand(5, buttons & B_TIME);
-        HandleCommand(6, buttons & B_PAUSE);
+        //HandleCommand(5, buttons & B_TIME);   // Select
+        HandleCommand(6, buttons & B_GAME);  // Start
         HandleCommand(7, buttons & B_A);
         HandleCommand(8, buttons & B_B);
-        /*HandleCommand(9, buttons & B_X);
-        HandleCommand(10, buttons & B_Y);
-        HandleCommand(11, buttons & B_L);
-        HandleCommand(12, buttons & B_R);*/
+        HandleCommand(9, buttons & B_TIME);    // X
+        HandleCommand(10, buttons & B_PAUSE);  // Y
+        //HandleCommand(11, buttons & B_L);
+        //HandleCommand(12, buttons & B_R);
         
         // Clear gamepad inputs when joypad directional inputs to avoid wonkiness
         int inputs = g_input1_state;
