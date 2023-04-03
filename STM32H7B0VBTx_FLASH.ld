@@ -110,16 +110,18 @@ MEMORY
 SECTIONS
 {
   _sitcram_hot = LOADADDR(._itcram_hot);
+  __extflash_start__ = LOADADDR(._itcram_hot);
   ._itcram_hot :
   {
-    __extflash_start__ = .;
     __itcram_start__ = .;
 
     . = ALIGN(4);
     __itcram_hot_start__ = .;
     
     build/dma.o (.text .text*)
+    build/dsp.o (.text .text*)
     build/messaging.o (.text .text*)
+    build/misc.o (.text .text*)
     build/player_oam.o (.text .text*)
     build/poly.o (.text .text*)
     build/ppu.o (.text .text*)
@@ -141,10 +143,13 @@ SECTIONS
     __dtcram_hot_start__ = .;
     
     build/dma.o (.rodata .rodata*)
+    build/dsp.o (.rodata .rodata*)
     build/messaging.o (.rodata .rodata*)
+    build/misc.o (.rodata .rodata*)
     build/player_oam.o (.rodata .rodata*)
     build/poly.o (.rodata .rodata*)
     build/ppu.o (.rodata .rodata*)
+    build/sprite_main.o (.rodata .rodata*)
     build/zelda_rtl.o (.rodata .rodata*)
 
     __dtcram_hot_end__ = .;
@@ -184,22 +189,19 @@ SECTIONS
   _siramdata = LOADADDR(._ram_exec);
   ._ram_exec :
   {
+    __ram_start__ = .;
 
     . = ALIGN(4);
     __ram_exec_start__ = .;
     
     build/attract.o (.text .text* .rodata .rodata*)
-    build/dsp.o (.text .text* .rodata .rodata*)
-    build/dungeon.o (.text .text* .rodata .rodata*)
-    build/ending.o (.text .text* .rodata .rodata*)
     build/hud.o (.text .text* .rodata .rodata*)
     build/load_gfx.o (.text .text* .rodata .rodata*)
-    build/misc.o (.text .text* .rodata .rodata*)
     build/overworld.o (.text .text* .rodata .rodata*)
     build/player.o (.text .text* .rodata .rodata*)
     build/select_file.o (.text .text* .rodata .rodata*)
     build/sprite.o (.text .text* .rodata .rodata*)
-    build/sprite_main.o (.text .text* .rodata .rodata*)
+    build/sprite_main.o (.text .text*)
     
     build/zelda_assets_in_ram.o (.text .text* .rodata .rodata*)
 
@@ -236,7 +238,7 @@ SECTIONS
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
     __ram_end__ = .;
-  } > RAM
+  } >RAM
 
 
   ._extflash :
@@ -246,17 +248,22 @@ SECTIONS
     
     build/audio.o (.text .text* .rodata .rodata*)
     build/opus_decoder_amalgam.o (.text .text* .rodata .rodata*)
+
+    build/dungeon.o (.text .text* .rodata .rodata*)
+    build/ending.o (.text .text* .rodata .rodata*)
     
     build/zelda_assets.o (.text .text* .rodata .rodata*)
 
     __extflash_end__ = .;
   } >EXTFLASH
 
+  __extflash_end__ = __extflash_start__ + SIZEOF(._itcram_hot) + SIZEOF(._dtcram_hot) + SIZEOF(._ahbram_hot) + SIZEOF(._ram_exec) + SIZEOF(._extflash);
+
   
   /* The startup code goes first into FLASH */
+    __flash_start__ = LOADADDR(.isr_vector);
   .isr_vector :
   {
-    __flash_start__ = .;
 
     . = ALIGN(4);
     KEEP(*(.isr_vector)) /* Startup code */
@@ -338,7 +345,7 @@ SECTIONS
     __dtcram_end__ = .;
   } >DTCMRAM AT> FLASH
 
-  __flash_end__ = .;
+  __flash_end__ = __flash_start__ + SIZEOF(.isr_vector) + SIZEOF(.text) + SIZEOF(.rodata) + SIZEOF(.ARM.extab) + SIZEOF(.ARM) + SIZEOF(.preinit_array) + SIZEOF(.init_array) + SIZEOF(.fini_array) + SIZEOF(.data);
   
 
   /* Remove information from the standard libraries */

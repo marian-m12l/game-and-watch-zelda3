@@ -20,7 +20,7 @@ TARGET = gw_base
 # building variables
 ######################################
 # debug build?
-DEBUG = 1
+DEBUG = 0
 # optimization
 OPT = -O3
 

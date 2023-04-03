@@ -10,9 +10,9 @@ import struct
 assets_to_keep = [
         #64,     # Dialogue offset               (794 B)
         #65,     # Dialogue text                 (36362 B)
-        #66,     # Sprites graphics              (133481 B)
+        66,     # Sprites graphics              (133481 B)
         67,     # Backgrounds graphics          (119901 B)
-        #68,     # Overworld Map graphics        (16384 B)
+        68,     # Overworld Map graphics        (16384 B)
         #69,     # Light Overworld Tilemap       (4096 B)
         #70,     # Dark Overworld Tilemap        (1024 B)
         #71,     # Prodefined Tile Data          (12876 B)
