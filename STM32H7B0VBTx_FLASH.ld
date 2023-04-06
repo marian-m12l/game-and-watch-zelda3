@@ -163,6 +163,12 @@ SECTIONS
     . = ALIGN(8);
   } >DTCMRAM
 
+  . = ALIGN(4);
+  ._spc_player_bss :
+  {
+    build/spc_player.o (.bss .bss*)   /* 64 KB of APU RAM */
+  } >DTCMRAM
+
   
 
   /* Copied from flash to ram at boot */

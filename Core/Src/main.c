@@ -182,7 +182,7 @@ __attribute__((optimize("-O0"))) void BSOD(BSOD_t fault, uint32_t pc, uint32_t l
 void GW_EnterDeepSleep(void)
 {
   // Stop SAI DMA (audio)
-  //HAL_SAI_DMAStop(&hsai_BlockA1);
+  HAL_SAI_DMAStop(&hsai_BlockA1);
 
   // Enable wakup by PIN1, the power button
   HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN1_LOW);
@@ -256,6 +256,66 @@ static uint32 frameCtr = 0;
 static uint32 renderedFrameCtr = 0;
 
 
+#define AUDIO_SAMPLE_RATE   (48000)   // SAI Sample rate
+#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60)  // SNES is 60 fps
+#define AUDIO_BUFFER_LENGTH_DMA ((2 * AUDIO_SAMPLE_RATE) / 60)  // DMA buffer contains 2 frames worth of audio samples in a ring buffer
+#define AUDIO_VOLUME_MAX 9
+
+typedef enum {
+    DMA_TRANSFER_STATE_HF = 0x00, // DMA buffer read until half --> write to first half
+    DMA_TRANSFER_STATE_TC = 0x01, // DMA buffer read until end --> write to second half
+} dma_transfer_state_t;
+
+int16_t audiobuffer[AUDIO_BUFFER_LENGTH];
+int16_t audiobuffer_dma[AUDIO_BUFFER_LENGTH * 2];
+
+dma_transfer_state_t dma_state;
+uint32_t dma_counter;
+
+const uint8_t volume_tbl[AUDIO_VOLUME_MAX + 1] = {
+    (uint8_t)(UINT8_MAX * 0.00f),
+    (uint8_t)(UINT8_MAX * 0.06f),
+    (uint8_t)(UINT8_MAX * 0.125f),
+    (uint8_t)(UINT8_MAX * 0.187f),
+    (uint8_t)(UINT8_MAX * 0.25f),
+    (uint8_t)(UINT8_MAX * 0.35f),
+    (uint8_t)(UINT8_MAX * 0.42f),
+    (uint8_t)(UINT8_MAX * 0.60f),
+    (uint8_t)(UINT8_MAX * 0.80f),
+    (uint8_t)(UINT8_MAX * 1.00f),
+};
+
+void HAL_SAI_TxHalfCpltCallback(SAI_HandleTypeDef *hsai)
+{
+    dma_counter++;
+    dma_state = DMA_TRANSFER_STATE_HF;
+}
+
+void HAL_SAI_TxCpltCallback(SAI_HandleTypeDef *hsai)
+{
+    dma_counter++;
+    dma_state = DMA_TRANSFER_STATE_TC;
+}
+
+void pcm_submit() {
+    uint8_t volume = 4;// FIXME Need a way to set volume
+    int32_t factor = volume_tbl[volume];
+    size_t offset = (dma_state == DMA_TRANSFER_STATE_HF) ? 0 : AUDIO_BUFFER_LENGTH;
+
+    /* FIXME Handle mute
+    if (audio_mute || volume == ODROID_AUDIO_VOLUME_MIN) {
+        for (int i = 0; i < AUDIO_BUFFER_LENGTH_GB; i++) {
+            audiobuffer_dma[i + offset] = 0;
+        }
+    } else {*/
+        for (int i = 0; i < AUDIO_BUFFER_LENGTH; i++) {
+            int32_t sample = audiobuffer[i];
+            audiobuffer_dma[i + offset] = (sample * factor) >> 8;
+        }
+    //}
+}
+
+
 void NORETURN Die(const char *error) {
 //#if defined(NDEBUG) && defined(_WIN32)
 //  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, kWindowTitle, error, NULL);
@@ -263,6 +323,111 @@ void NORETURN Die(const char *error) {
   printf(stderr, "Error: %s\n", error);
   //exit(1);
   Error_Handler();
+}
+
+
+/* set audio frequency  */
+static void set_audio_frequency(uint32_t frequency)
+{
+
+    /** reconfig PLL2 and SAI */
+    RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+
+    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SAI1;
+
+    /* Reconfigure on the fly PLL2 */
+    /* config to get 32768Hz */
+    /* The audio clock frequency is derived directly */
+    /* SAI mode is MCKDIV mode */
+    if (frequency == 32768)
+    {
+
+        PeriphClkInitStruct.PLL2.PLL2M = 25;
+        PeriphClkInitStruct.PLL2.PLL2N = 196;
+        PeriphClkInitStruct.PLL2.PLL2P = 10;
+        PeriphClkInitStruct.PLL2.PLL2Q = 2;
+        PeriphClkInitStruct.PLL2.PLL2R = 5;
+        PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_1;
+        PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
+        PeriphClkInitStruct.PLL2.PLL2FRACN = 5000;
+
+    /* config to get 48KHz and multiple */
+    /* SAI mode is in standard frequency mode */
+    }
+    else
+    {
+
+        PeriphClkInitStruct.PLL2.PLL2M = 25;
+        PeriphClkInitStruct.PLL2.PLL2N = 192;
+        PeriphClkInitStruct.PLL2.PLL2P = 5;
+        PeriphClkInitStruct.PLL2.PLL2Q = 2;
+        PeriphClkInitStruct.PLL2.PLL2R = 5;
+        PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_1;
+        PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
+        PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
+    }
+
+    // keep PLL3 unchanged
+    PeriphClkInitStruct.PLL3.PLL3M = 4;
+    PeriphClkInitStruct.PLL3.PLL3N = 9;
+    PeriphClkInitStruct.PLL3.PLL3P = 2;
+    PeriphClkInitStruct.PLL3.PLL3Q = 2;
+    PeriphClkInitStruct.PLL3.PLL3R = 24;
+    PeriphClkInitStruct.PLL3.PLL3RGE = RCC_PLL3VCIRANGE_3;
+    PeriphClkInitStruct.PLL3.PLL3VCOSEL = RCC_PLL3VCOWIDE;
+    PeriphClkInitStruct.PLL3.PLL3FRACN = 0;
+
+    PeriphClkInitStruct.Sai1ClockSelection = RCC_SAI1CLKSOURCE_PLL2;
+    PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL2;
+
+    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+    {
+        Error_Handler();
+    }
+
+    /* remove the current configuration */
+    HAL_SAI_DeInit(&hsai_BlockA1);
+
+    /* Set Audio sample rate at 32768Hz using MCKDIV mode */
+    if (frequency == 32768)
+    {
+
+        hsai_BlockA1.Init.AudioFrequency = SAI_AUDIO_FREQUENCY_MCKDIV;
+        hsai_BlockA1.Init.Mckdiv = 6;
+
+        /* config to get 48KHz and other standard values */
+        /*
+    SAI_AUDIO_FREQUENCY_192K      192000U
+    SAI_AUDIO_FREQUENCY_96K        96000U
+    SAI_AUDIO_FREQUENCY_48K        48000U
+    SAI_AUDIO_FREQUENCY_44K        44100U
+    SAI_AUDIO_FREQUENCY_32K        32000U
+    SAI_AUDIO_FREQUENCY_22K        22050U
+    SAI_AUDIO_FREQUENCY_16K        16000U
+    SAI_AUDIO_FREQUENCY_11K        11025U
+    SAI_AUDIO_FREQUENCY_8K          8000U
+    */
+
+    /* Set Audio sample rate at various standard frequencies using AudioFrequency mode */
+    } else {
+        /* default value 48KHz */
+        hsai_BlockA1.Init.AudioFrequency = SAI_AUDIO_FREQUENCY_48K;
+
+        /* check from the different possible values */
+        if ((frequency == SAI_AUDIO_FREQUENCY_192K) ||
+            (frequency == SAI_AUDIO_FREQUENCY_96K) ||
+            (frequency == SAI_AUDIO_FREQUENCY_48K) ||
+            (frequency == SAI_AUDIO_FREQUENCY_44K) ||
+            (frequency == SAI_AUDIO_FREQUENCY_32K) ||
+            (frequency == SAI_AUDIO_FREQUENCY_22K) ||
+            (frequency == SAI_AUDIO_FREQUENCY_16K) ||
+            (frequency == SAI_AUDIO_FREQUENCY_11K) ||
+            (frequency == SAI_AUDIO_FREQUENCY_8K))
+            hsai_BlockA1.Init.AudioFrequency = frequency;
+    }
+
+    /* apply the new configuration */
+    HAL_SAI_Init(&hsai_BlockA1);
 }
 
 
@@ -384,6 +549,8 @@ void app_main(void)
     LoadAssets();
     
     ZeldaInitialize();
+
+    ZeldaEnableMsu(false);
     
     ZeldaReadSram(save_sram);
 
@@ -455,27 +622,12 @@ void app_main(void)
         renderedFrameCtr++;
         DrawPpuFrameWithPerf();
         prevTime = HAL_GetTick() - prevFrameTick;
-
-        // TODO Need to refresh screen !!!
         
-        // if vsync isn't working, delay manually
-        /*curTick = HAL_GetTick();
+        // Render audio to DMA buffer
+        ZeldaRenderAudio(audiobuffer, AUDIO_BUFFER_LENGTH, 1);
+        pcm_submit();
+        ZeldaDiscardUnusedAudioFrames();
 
-        if (!g_config.disable_frame_delay) {
-        static const uint8 delays[3] = { 17, 17, 16 }; // 60 fps
-        lastTick += delays[frameCtr % 3];
-
-        if (lastTick > curTick) {
-            uint32 delta = lastTick - curTick;
-            if (delta > 500) {
-            lastTick = curTick - 500;
-            delta = 500;
-            }
-    //        printf("Sleeping %d\n", delta);
-        } else if (curTick - lastTick > 500) {
-            lastTick = curTick;
-        }
-        }*/
     }
 
     return 0;
@@ -562,6 +714,13 @@ int main(void)
   copy_areas[2] = (uint32_t) &__ahbram_hot_end__;
   copy_areas[3] = copy_areas[2] - copy_areas[1];
   memcpy_no_check((uint32_t *) copy_areas[1], (uint32_t *) copy_areas[0], copy_areas[3]);
+
+  // Init audio buffers and SAI DMA
+  set_audio_frequency(AUDIO_SAMPLE_RATE);
+  memset(audiobuffer, 0, sizeof(audiobuffer));
+  memset(audiobuffer_dma, 0, sizeof(audiobuffer_dma));
+  HAL_SAI_Transmit_DMA(&hsai_BlockA1, (uint8_t *) audiobuffer_dma, AUDIO_BUFFER_LENGTH_DMA);  // uint8_t ????
+    
 
 
   /* USER CODE END 2 */
@@ -837,7 +996,7 @@ static void MX_SAI1_Init(void)
   hsai_BlockA1.Init.Synchro = SAI_ASYNCHRONOUS;
   hsai_BlockA1.Init.OutputDrive = SAI_OUTPUTDRIVE_DISABLE;
   hsai_BlockA1.Init.NoDivider = SAI_MASTERDIVIDER_ENABLE;
-  hsai_BlockA1.Init.FIFOThreshold = SAI_FIFOTHRESHOLD_EMPTY;
+  hsai_BlockA1.Init.FIFOThreshold = SAI_FIFOTHRESHOLD_FULL;
   hsai_BlockA1.Init.AudioFrequency = SAI_AUDIO_FREQUENCY_48K;
   hsai_BlockA1.Init.SynchroExt = SAI_SYNCEXT_DISABLE;
   hsai_BlockA1.Init.MonoStereoMode = SAI_MONOMODE;
