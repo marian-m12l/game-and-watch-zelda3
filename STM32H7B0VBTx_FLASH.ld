@@ -272,12 +272,8 @@ SECTIONS
     . = ALIGN(4);
     _extflash = .;
     
-    build/audio.o (.text .text* .rodata .rodata*)
     build/opus_decoder_amalgam.o (.text .text* .rodata .rodata*)
 
-    build/dungeon.o (.text .text* .rodata .rodata*)
-    build/ending.o (.text .text* .rodata .rodata*)
-    
     build/zelda_assets.o (.text .text* .rodata .rodata*)
 
     __extflash_end__ = .;

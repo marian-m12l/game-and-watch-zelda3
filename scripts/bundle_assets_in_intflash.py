@@ -7,9 +7,9 @@
 import struct
 
 assets_to_keep = [
-        0,      # Sound Bank Intro              (50066 B)
-        1,      # Sound Bank Indoor             (12756 B)
-        2,      # Sound Bank Ending             (8354 B)
+        #0,      # Sound Bank Intro              (50066 B)
+        #1,      # Sound Bank Indoor             (12756 B)
+        #2,      # Sound Bank Ending             (8354 B)
         57,     # Link graphics                 (28672 B)
         58,     # Dungeon Sprites               (4965 B)
         59,     # Dungeon Sprite Offset         (640 B)
@@ -32,8 +32,8 @@ assets_to_keep = [
         111,    # Overworld Music Sets          (256 B)
         112,    # Overworld Music Sets 2        (96 B)
 
-        64,     # Dialogue offset               (794 B)
-        65,     # Dialogue text                 (36362 B)
+        #64,     # Dialogue offset               (794 B)
+        #65,     # Dialogue text                 (36362 B)
         ##66,     # Sprites graphics              (133481 B)
         ##67,     # Backgrounds graphics          (119901 B)
         ##68,     # Overworld Map graphics        (16384 B)
