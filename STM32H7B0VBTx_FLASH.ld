@@ -279,8 +279,6 @@ SECTIONS
     build/ending.o (.text .text* .rodata .rodata*)
     
     build/zelda_assets.o (.text .text* .rodata .rodata*)
-    
-    build/save_sram.o (.text .text* .rodata .rodata*)
 
     __extflash_end__ = .;
   } >EXTFLASH

@@ -39,8 +39,6 @@
 #include "zelda3/types.h"
 #include "zelda3/zelda_rtl.h"
 
-#include "save_sram.h"
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
