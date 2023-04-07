@@ -69,7 +69,7 @@ __RAM_UC_LENGTH__   = 300K;
 __RAM_CORE_LENGTH__ = 68K;
 __RAM_EMU_LENGTH__  = __RAM_LENGTH__ - __RAM_UC_LENGTH__ - __RAM_CORE_LENGTH__;
 __AHBRAM_LENGTH__   = 128K;
-__FLASH_LENGTH__    = 128K;
+__FLASH_LENGTH__    = 256K; /* Both banks are 256KB */
 
 
 
@@ -81,7 +81,20 @@ __EXTFLASH_OFFSET__ = DEFINED(__EXTFLASH_OFFSET__) ? __EXTFLASH_OFFSET__ : 0;
 __EXTFLASH_BASE__ = 0x90000000;  /* Beginning of addressable extflash addresses */
 __EXTFLASH_START__ = __EXTFLASH_BASE__ + __EXTFLASH_OFFSET__;  /* Beginning of where we're going to store emulator and rom data */
 
-__EXTFLASH_LENGTH__ = __EXTFLASH_TOTAL_LENGTH__;
+
+__SAVEFLASH_LENGTH__ = 8192;
+__CONFIGFLASH_LENGTH__ = 4096;
+__FBFLASH_LENGTH__ = ENABLE_SCREENSHOT ? ((320 * 240 * 2 + 4095) / 4096) * 4096 : 0;
+
+__EXTFLASH_LENGTH__ = __EXTFLASH_TOTAL_LENGTH__ - (__SAVEFLASH_LENGTH__ + __CONFIGFLASH_LENGTH__ + __FBFLASH_LENGTH__);
+__EXTFLASH_END__ = __EXTFLASH_START__ + __EXTFLASH_LENGTH__;
+__SAVEFLASH_START__ = __EXTFLASH_END__;
+__SAVEFLASH_END__   = __SAVEFLASH_START__ + __SAVEFLASH_LENGTH__;
+__CONFIGFLASH_START__ = __SAVEFLASH_END__;
+__CONFIGFLASH_END__   = __CONFIGFLASH_START__ + __CONFIGFLASH_LENGTH__;
+__FBFLASH_START__ = __CONFIGFLASH_END__;
+__FBFLASH_END__   = __FBFLASH_START__ + __FBFLASH_LENGTH__;
+
 
 
 __RAM_START__       = 0x24000000;
@@ -102,8 +115,15 @@ MEMORY
   DTCMRAM  (xrw) : ORIGIN = 0x20000000, LENGTH = 128K
   RAM      (xrw) : ORIGIN = 0x24000000, LENGTH = 1024K
   AHBRAM   (xrw) : ORIGIN = 0x30000000, LENGTH = 128K
+
+  /* + 32KB of AHB RAM IN SRD DOMAIN @ 0x38000000 ? */
+  /* + 4KB of Backup RAM @ 0x38800000 ? */
+
   FLASH    (xr ) : ORIGIN = __INTFLASH__,  LENGTH = __FLASH_LENGTH__
   EXTFLASH (xr ) : ORIGIN = __EXTFLASH_START__,  LENGTH = __EXTFLASH_LENGTH__
+  SAVEFLASH(xr ) : ORIGIN = __SAVEFLASH_START__, LENGTH = __SAVEFLASH_LENGTH__
+  CONFIGFLASH(xr ) : ORIGIN = __CONFIGFLASH_START__, LENGTH = __CONFIGFLASH_LENGTH__
+  FBFLASH(xr ) : ORIGIN = __FBFLASH_START__, LENGTH = __FBFLASH_LENGTH__
 }
 
 /* Define output sections */
@@ -266,6 +286,30 @@ SECTIONS
   } >EXTFLASH
 
   __extflash_end__ = __extflash_start__ + SIZEOF(._itcram_hot) + SIZEOF(._dtcram_hot) + SIZEOF(._ahbram_hot) + SIZEOF(._ram_exec) + SIZEOF(._extflash);
+
+
+  ._saveflash (NOLOAD) :
+  {
+    __saveflash_start__ = .;
+    *(.saveflash)
+    __saveflash_end__ = .;
+  } > SAVEFLASH
+
+  ._configflash (NOLOAD):
+  {
+    . = ALIGN(4K);
+    __configflash_start__ = .;
+    *(.configflash)
+    __configflash_end__ = .;
+  } > CONFIGFLASH
+
+  ._fbflash (NOLOAD):
+  {
+    . = ALIGN(4K);
+    __fbflash_start__ = .;
+    *(.fbflash)
+    __fbflash_end__ = .;
+  } > FBFLASH
 
   
   /* The startup code goes first into FLASH */

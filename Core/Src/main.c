@@ -74,8 +74,6 @@ SPI_HandleTypeDef hspi2;
 //char logbuf[1024 * 4] PERSISTENT __attribute__((aligned(4)));
 //uint32_t log_idx PERSISTENT;
 
-//uint16_t audiobuffer[48000] __attribute__((section (".audio")));
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -256,7 +254,7 @@ static uint32 frameCtr = 0;
 static uint32 renderedFrameCtr = 0;
 
 
-#define AUDIO_SAMPLE_RATE   (48000)   // SAI Sample rate
+#define AUDIO_SAMPLE_RATE   (32000)   // SAI Sample rate
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60)  // SNES is 60 fps
 #define AUDIO_BUFFER_LENGTH_DMA ((2 * AUDIO_SAMPLE_RATE) / 60)  // DMA buffer contains 2 frames worth of audio samples in a ring buffer
 #define AUDIO_VOLUME_MAX 9
@@ -540,6 +538,62 @@ static void HandleCommand(uint32 j, bool pressed) {
 }
 
 
+void store_erase(const uint8_t *flash_ptr, uint32_t size)
+{
+  // Only allow addresses in the areas meant for erasing and writing.
+  assert(
+    ((flash_ptr >= &__SAVEFLASH_START__)   && ((flash_ptr + size) <= &__SAVEFLASH_END__)) ||
+    ((flash_ptr >= &__configflash_start__) && ((flash_ptr + size) <= &__configflash_end__)) ||
+    ((flash_ptr >= &__fbflash_start__) && ((flash_ptr + size) <= &__fbflash_end__))
+  );
+
+  // Convert mem mapped pointer to flash address
+  uint32_t save_address = flash_ptr - &__EXTFLASH_BASE__;
+
+  // Only allow 4kB aligned pointers
+  assert((save_address & (4*1024 - 1)) == 0);
+
+  // Round size up to nearest 4K
+  if ((size & 0xfff) != 0) {
+    size += 0x1000 - (size & 0xfff);
+  }
+
+  OSPI_DisableMemoryMappedMode();
+  OSPI_EraseSync(save_address, size);
+  OSPI_EnableMemoryMappedMode();
+}
+
+void store_save(const uint8_t *flash_ptr, const uint8_t *data, size_t size)
+{
+  // Convert mem mapped pointer to flash address
+  uint32_t save_address = flash_ptr - &__EXTFLASH_BASE__;
+
+  // Only allow 4kB aligned pointers
+  assert((save_address & (4*1024 - 1)) == 0);
+
+  int diff = memcmp((void*)flash_ptr, data, size);
+  if (diff == 0) {
+    return;
+  }
+
+  store_erase(flash_ptr, size);
+
+  OSPI_DisableMemoryMappedMode();
+  OSPI_Program(save_address, data, size);
+  OSPI_EnableMemoryMappedMode();
+}
+
+// TODO In header file??
+uint8_t SAVE_SRAM_EXTFLASH[8192]  __attribute__((section (".saveflash"))) __attribute__((aligned(4096)));
+
+uint8_t* readSramImpl() {
+  return SAVE_SRAM_EXTFLASH;
+}
+void writeSramImpl(uint8_t* sram) {
+  store_save(SAVE_SRAM_EXTFLASH, sram, 8192);
+}
+
+
 
 void app_main(void)
 {
@@ -550,9 +604,11 @@ void app_main(void)
     
     ZeldaInitialize();
 
+    g_wanted_zelda_features = kFeatures0_SkipIntroOnKeypress;
+
     ZeldaEnableMsu(false);
     
-    ZeldaReadSram(save_sram);
+    ZeldaReadSram();
 
     bool running = true;
     //uint32 lastTick = HAL_GetTick();
@@ -588,14 +644,14 @@ void app_main(void)
         HandleCommand(2, buttons & B_Down);
         HandleCommand(3, buttons & B_Left);
         HandleCommand(4, buttons & B_Right);
-        //HandleCommand(5, buttons & B_TIME);   // Select
-        HandleCommand(6, buttons & B_GAME);  // Start
-        HandleCommand(7, buttons & B_A);
-        HandleCommand(8, buttons & B_B);
-        HandleCommand(9, buttons & B_TIME);    // X
-        HandleCommand(10, buttons & B_PAUSE);  // Y
-        //HandleCommand(11, buttons & B_L);
-        //HandleCommand(12, buttons & B_R);
+        HandleCommand(5, (buttons & B_GAME) && (buttons & B_TIME));   // Select
+        HandleCommand(6, (buttons & B_GAME) && (buttons & B_PAUSE));  // Start
+        HandleCommand(7, !(buttons & B_GAME) && (buttons & B_A));
+        HandleCommand(8, !(buttons & B_GAME) && (buttons & B_B));
+        HandleCommand(9, !(buttons & B_GAME) && (buttons & B_TIME));    // X
+        HandleCommand(10, !(buttons & B_GAME) && (buttons & B_PAUSE));  // Y
+        HandleCommand(11, (buttons & B_GAME) && (buttons & B_B));
+        HandleCommand(12, (buttons & B_GAME) && (buttons & B_A));
         
         // Clear gamepad inputs when joypad directional inputs to avoid wonkiness
         int inputs = g_input1_state;
@@ -610,6 +666,12 @@ void app_main(void)
         /*if ((g_turbo ^ (is_replay & g_replay_turbo)) && (frameCtr & (g_turbo ? 0xf : 0x7f)) != 0) {
         continue;
         }*/
+        
+        // DO NOT skip audio frames
+        // Render audio to DMA buffer
+        ZeldaRenderAudio(audiobuffer, AUDIO_BUFFER_LENGTH, 1);
+        pcm_submit();
+        //ZeldaDiscardUnusedAudioFrames();
 
         // Skip frames
         //thisFrameTick = HAL_GetTick();
@@ -622,11 +684,6 @@ void app_main(void)
         renderedFrameCtr++;
         DrawPpuFrameWithPerf();
         prevTime = HAL_GetTick() - prevFrameTick;
-        
-        // Render audio to DMA buffer
-        ZeldaRenderAudio(audiobuffer, AUDIO_BUFFER_LENGTH, 1);
-        pcm_submit();
-        ZeldaDiscardUnusedAudioFrames();
 
     }
 
@@ -997,7 +1054,7 @@ static void MX_SAI1_Init(void)
   hsai_BlockA1.Init.OutputDrive = SAI_OUTPUTDRIVE_DISABLE;
   hsai_BlockA1.Init.NoDivider = SAI_MASTERDIVIDER_ENABLE;
   hsai_BlockA1.Init.FIFOThreshold = SAI_FIFOTHRESHOLD_FULL;
-  hsai_BlockA1.Init.AudioFrequency = SAI_AUDIO_FREQUENCY_48K;
+  hsai_BlockA1.Init.AudioFrequency = SAI_AUDIO_FREQUENCY_32K;
   hsai_BlockA1.Init.SynchroExt = SAI_SYNCEXT_DISABLE;
   hsai_BlockA1.Init.MonoStereoMode = SAI_MONOMODE;
   hsai_BlockA1.Init.CompandingMode = SAI_NOCOMPANDING;
