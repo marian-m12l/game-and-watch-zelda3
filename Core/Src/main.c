@@ -31,6 +31,7 @@
 
 // FIXME ??? #include "porting.h"
 #include "zelda_assets.h"
+#include "zelda_assets_in_intflash.h"
 #include "zelda_assets_in_ram.h"
 
 #include "zelda3/assets.h"
@@ -255,6 +256,7 @@ static uint32 renderedFrameCtr = 0;
 #define AUDIO_SAMPLE_RATE   (32000)   // SAI Sample rate
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60)  // SNES is 60 fps
 #define AUDIO_BUFFER_LENGTH_DMA ((2 * AUDIO_SAMPLE_RATE) / 60)  // DMA buffer contains 2 frames worth of audio samples in a ring buffer
+#define AUDIO_VOLUME_MIN 0
 #define AUDIO_VOLUME_MAX 9
 
 typedef enum {
@@ -264,6 +266,7 @@ typedef enum {
 
 int16_t audiobuffer[AUDIO_BUFFER_LENGTH];
 int16_t audiobuffer_dma[AUDIO_BUFFER_LENGTH * 2];
+uint8_t volume = 4;// FIXME Load default volume from config in extflash ?
 
 dma_transfer_state_t dma_state;
 uint32_t dma_counter;
@@ -294,7 +297,6 @@ void HAL_SAI_TxCpltCallback(SAI_HandleTypeDef *hsai)
 }
 
 void pcm_submit() {
-    uint8_t volume = 4;// FIXME Need a way to set volume
     int32_t factor = volume_tbl[volume];
     size_t offset = (dma_state == DMA_TRANSFER_STATE_HF) ? 0 : AUDIO_BUFFER_LENGTH;
 
@@ -453,6 +455,25 @@ static void LoadAssets() {
       Die("Assets file corruption");
     g_asset_sizes[i] = size;
     g_asset_ptrs[i] = data + offset;
+    offset += size;
+  }
+
+  //Overload some assets with assets in intflash
+  size_t length_intflash_assets = zelda_intflash_assets_length;
+  uint8 *data_intflash_assets = zelda_intflash_assets;
+
+  uint32 number_of_intflash_assets = *(uint32 *)(data_intflash_assets);
+  
+  offset = 4 + number_of_intflash_assets * 8;
+
+  for (size_t i = 0; i < number_of_intflash_assets; i++) {
+    uint32 index = *(uint32 *)(data_intflash_assets + 4 + i * 8);
+    uint32 size = *(uint32 *)(data_intflash_assets + 4 + i * 8 + 4);
+    offset = (offset + 3) & ~3;
+    if ((uint64)offset + size > length_intflash_assets)
+      Die("Assets in INTFLASH file corruption");
+    g_asset_sizes[index] = size;
+    g_asset_ptrs[index] = data_intflash_assets + offset;
     offset += size;
   }
 
@@ -638,18 +659,31 @@ void app_main(void)
             GW_EnterDeepSleep();
         }
 
-        HandleCommand(1, buttons & B_Up);
-        HandleCommand(2, buttons & B_Down);
-        HandleCommand(3, buttons & B_Left);
-        HandleCommand(4, buttons & B_Right);
-        HandleCommand(5, (buttons & B_GAME) && (buttons & B_TIME));   // Select
-        HandleCommand(6, (buttons & B_GAME) && (buttons & B_PAUSE));  // Start
+        HandleCommand(1, !(buttons & B_GAME) && (buttons & B_Up));
+        HandleCommand(2, !(buttons & B_GAME) && (buttons & B_Down));
+        HandleCommand(3, !(buttons & B_GAME) && (buttons & B_Left));
+        HandleCommand(4, !(buttons & B_GAME) && (buttons & B_Right));
         HandleCommand(7, !(buttons & B_GAME) && (buttons & B_A));
         HandleCommand(8, !(buttons & B_GAME) && (buttons & B_B));
         HandleCommand(9, !(buttons & B_GAME) && (buttons & B_TIME));    // X
         HandleCommand(10, !(buttons & B_GAME) && (buttons & B_PAUSE));  // Y
-        HandleCommand(11, (buttons & B_GAME) && (buttons & B_B));
-        HandleCommand(12, (buttons & B_GAME) && (buttons & B_A));
+        
+        HandleCommand(5, (buttons & B_GAME) && (buttons & B_TIME));   // Select
+        HandleCommand(6, (buttons & B_GAME) && (buttons & B_PAUSE));  // Start
+        HandleCommand(11, (buttons & B_GAME) && (buttons & B_B)); // L
+        HandleCommand(12, (buttons & B_GAME) && (buttons & B_A)); // R
+
+        // Adjust volume FIXME debounce
+        if ((buttons & B_GAME) && (buttons & B_Left)) {
+          if (volume > AUDIO_VOLUME_MIN) {
+            volume--;
+          }
+        }
+        if ((buttons & B_GAME) && (buttons & B_Right)) {
+          if (volume < AUDIO_VOLUME_MAX) {
+            volume++;
+          }
+        }
         
         // Clear gamepad inputs when joypad directional inputs to avoid wonkiness
         int inputs = g_input1_state;

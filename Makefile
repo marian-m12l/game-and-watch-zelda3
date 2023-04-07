@@ -82,8 +82,8 @@ Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_ospi.c \
 Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai.c \
 Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai_ex.c \
 Core/Src/porting/zelda_assets.c \
+Core/Src/porting/zelda_assets_in_intflash.c \
 Core/Src/porting/zelda_assets_in_ram.c \
-Core/Src/porting/save_sram.c \
 zelda3/zelda_rtl.c \
 zelda3/misc.c \
 zelda3/nmi.c \

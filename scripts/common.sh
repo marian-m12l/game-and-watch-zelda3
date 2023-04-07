@@ -27,7 +27,8 @@ else
 fi
 
 FLASHAPP=scripts/flashapp.sh
-FLASH_MULTI=scripts/flash_multi.sh
+#FLASH_MULTI=scripts/flash_multi.sh
+FLASH_MULTI=../game-and-watch-flashloader/flash_multi.sh
 
 OBJDUMP=${OBJDUMP:-$DEFAULT_OBJDUMP}
 GDB=${GDB:-$DEFAULT_GDB}
