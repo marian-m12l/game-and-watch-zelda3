@@ -56,6 +56,8 @@ Core/Src/gw_flash.c \
 Core/Src/stm32h7xx_it.c \
 Core/Src/stm32h7xx_hal_msp.c \
 Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_cortex.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dac.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dac_ex.c \
 Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_ltdc.c \
 Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_ltdc_ex.c \
 Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rcc.c \

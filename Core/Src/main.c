@@ -58,6 +58,10 @@
 
 /* Private variables ---------------------------------------------------------*/
 
+
+DAC_HandleTypeDef hdac1;
+DAC_HandleTypeDef hdac2;
+
 LTDC_HandleTypeDef hltdc;
 
 OSPI_HandleTypeDef hospi1;
@@ -79,6 +83,8 @@ SPI_HandleTypeDef hspi2;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
+static void MX_DAC1_Init(void);
+static void MX_DAC2_Init(void);
 static void MX_LTDC_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_OCTOSPI1_Init(void);
@@ -252,6 +258,9 @@ static uint16 g_gamepad_last_cmd[kGamepadBtn_Count];
 static uint32 frameCtr = 0;
 static uint32 renderedFrameCtr = 0;
 
+#define BRIGHTNESS_MIN 1
+#define BRIGHTNESS_MAX 9
+static const uint8_t backlightLevels[] = {128, 130, 133, 139, 149, 162, 178, 198, 222, 255};
 
 #define AUDIO_SAMPLE_RATE   (32000)   // SAI Sample rate
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60)  // SNES is 60 fps
@@ -267,6 +276,7 @@ typedef enum {
 int16_t audiobuffer[AUDIO_BUFFER_LENGTH];
 int16_t audiobuffer_dma[AUDIO_BUFFER_LENGTH * 2];
 uint8_t volume = 4;// FIXME Load default volume from config in extflash ?
+uint8_t brightness = 4;// FIXME Load default volume from config in extflash ?
 
 dma_transfer_state_t dma_state;
 uint32_t dma_counter;
@@ -502,7 +512,7 @@ static void LoadAssets() {
 static void DrawPpuFrameWithPerf() {
   /*int render_scale = PpuGetCurrentRenderScale(g_zenv.ppu, g_ppu_render_flags);*/
 
-  uint8 *pixel_buffer = framebuffer;    //0;
+  uint8 *pixel_buffer = framebuffer + 320*8 + 32;    // Start 8 rows from the top, 32 pixels from left
   int pitch = 320 * 2; // FIXME WIDTH * BPP; // FIXME 0;
 
   //ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags); // FIXME SHOULD DRAW RGB565 !!!
@@ -521,14 +531,24 @@ static void DrawPpuFrameWithPerf() {
 
   // Render fps with dots
   for (uint8_t y = 1; y<=60; y++) {
-    framebuffer[y*2*320+300] = (y <= g_curr_fps ? 0x07e0 : 0xf800);  // FIXME WIDTH
+    framebuffer[y*2*320+300] = (y <= g_curr_fps ? 0x07e0 : 0xf800);
+  }
+
+  // Render audio volume
+  for (uint8_t y = 1; y<=AUDIO_VOLUME_MAX; y++) {
+    framebuffer[y*2*320+305] = (y <= volume ? 0x07e0 : 0x7bef);
+  }
+
+  // Render brightness level
+  for (uint8_t y = 1; y<=BRIGHTNESS_MAX; y++) {
+    framebuffer[y*2*320+310] = (y <= brightness ? 0x07e0 : 0x7bef);
   }
 
   // Render frame counter with dots
-  memset(&framebuffer[235*320], 0, sizeof(uint16_t)*320*5);
+  /*memset(&framebuffer[235*320], 0, sizeof(uint16_t)*320*5);
   for (uint16_t x = 1; x<=(renderedFrameCtr%(160*5)); x++) {
     framebuffer[235*320+x*2] = 0x07e0;  // FIXME WIDTH
-  }
+  }*/
 
 }
 
@@ -616,8 +636,6 @@ void writeSramImpl(uint8_t* sram) {
 
 void app_main(void)
 {
-
-    lcd_fill_framebuffer(0x08, 0x0f, 0x08); // Light gray
     
     LoadAssets();
     
@@ -684,6 +702,22 @@ void app_main(void)
             volume++;
           }
         }
+
+        // Adjust brightness FIXME debounce
+        if ((buttons & B_GAME) && (buttons & B_Down)) {
+          if (brightness > BRIGHTNESS_MIN) {
+            brightness--;
+            lcd_backlight_set(backlightLevels[brightness]);
+          }
+        }
+        if ((buttons & B_GAME) && (buttons & B_Up)) {
+          if (brightness < BRIGHTNESS_MAX) {
+            brightness++;
+            lcd_backlight_set(backlightLevels[brightness]);
+          }
+        }
+
+        
         
         // Clear gamepad inputs when joypad directional inputs to avoid wonkiness
         int inputs = g_input1_state;
@@ -755,6 +789,8 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
+  MX_DAC1_Init();
+  MX_DAC2_Init();
   MX_LTDC_Init();
   MX_SPI2_Init();
   MX_OCTOSPI1_Init();
@@ -772,7 +808,8 @@ int main(void)
   OSPI_Init(&hospi1);
 
   lcd_init(&hspi2, &hltdc);
-  lcd_fill_framebuffer(0x00, 0x3f, 0x00); // Green
+  lcd_fill_framebuffer(0x00, 0x00, 0x00);
+  lcd_backlight_set(backlightLevels[brightness]);
 
   // Copy instructions and data from extflash to axiram
   static uint32_t copy_areas[4] __attribute__((used));
@@ -930,6 +967,95 @@ static void MX_NVIC_Init(void)
   /* OCTOSPI1_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(OCTOSPI1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(OCTOSPI1_IRQn);
+}
+
+/**
+  * @brief DAC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_DAC1_Init(void)
+{
+
+  /* USER CODE BEGIN DAC1_Init 0 */
+
+  /* USER CODE END DAC1_Init 0 */
+
+  DAC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN DAC1_Init 1 */
+
+  /* USER CODE END DAC1_Init 1 */
+  /** DAC Initialization
+  */
+  hdac1.Instance = DAC1;
+  if (HAL_DAC_Init(&hdac1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** DAC channel OUT1 config
+  */
+  sConfig.DAC_SampleAndHold = DAC_SAMPLEANDHOLD_DISABLE;
+  sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
+  sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
+  sConfig.DAC_ConnectOnChipPeripheral = DAC_CHIPCONNECT_DISABLE;
+  sConfig.DAC_UserTrimming = DAC_TRIMMING_FACTORY;
+  if (HAL_DAC_ConfigChannel(&hdac1, &sConfig, DAC_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** DAC channel OUT2 config
+  */
+  sConfig.DAC_ConnectOnChipPeripheral = DAC_SAMPLEANDHOLD_DISABLE;
+  if (HAL_DAC_ConfigChannel(&hdac1, &sConfig, DAC_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN DAC1_Init 2 */
+
+  /* USER CODE END DAC1_Init 2 */
+
+}
+
+/**
+  * @brief DAC2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_DAC2_Init(void)
+{
+
+  /* USER CODE BEGIN DAC2_Init 0 */
+
+  /* USER CODE END DAC2_Init 0 */
+
+  DAC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN DAC2_Init 1 */
+
+  /* USER CODE END DAC2_Init 1 */
+  /** DAC Initialization
+  */
+  hdac2.Instance = DAC2;
+  if (HAL_DAC_Init(&hdac2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** DAC channel OUT1 config
+  */
+  sConfig.DAC_SampleAndHold = DAC_SAMPLEANDHOLD_DISABLE;
+  sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
+  sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
+  sConfig.DAC_ConnectOnChipPeripheral = DAC_CHIPCONNECT_DISABLE;
+  sConfig.DAC_UserTrimming = DAC_TRIMMING_FACTORY;
+  if (HAL_DAC_ConfigChannel(&hdac2, &sConfig, DAC_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN DAC2_Init 2 */
+
+  /* USER CODE END DAC2_Init 2 */
+
 }
 
 /**
@@ -1185,7 +1311,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIO_Speaker_enable_GPIO_Port, GPIO_Speaker_enable_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6, GPIO_PIN_SET);
+  //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
@@ -1216,11 +1342,11 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(BTN_PWR_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PA4 PA5 PA6 */
-  GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6;
+  /*GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);*/
 
   /*Configure GPIO pin : PB12 */
   GPIO_InitStruct.Pin = GPIO_PIN_12;
