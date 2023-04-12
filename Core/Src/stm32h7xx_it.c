@@ -96,6 +96,8 @@ void common_fault_handler_c(sContextStateFrame *frame, int type)
 extern OSPI_HandleTypeDef hospi1;
 extern DMA_HandleTypeDef hdma_sai1_a;
 extern SAI_HandleTypeDef hsai_BlockA1;
+extern LTDC_HandleTypeDef hltdc;
+extern TIM_HandleTypeDef htim1;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -209,6 +211,27 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
+  * @brief This function handles EXTI line2 interrupt.
+  */
+void EXTI2_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI2_IRQn 0 */
+
+  /*if(__HAL_GPIO_EXTI_GET_FLAG(GPIO_PIN_2))
+  {
+    bq24072_handle_power_good();
+  }*/
+
+  /* USER CODE END EXTI2_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);
+  /* USER CODE BEGIN EXTI2_IRQn 1 */
+
+  __HAL_GPIO_EXTI_CLEAR_FLAG(GPIO_PIN_2);
+
+  /* USER CODE END EXTI2_IRQn 1 */
+}
+
+/**
   * @brief This function handles DMA1 stream0 global interrupt.
   */
 void DMA1_Stream0_IRQHandler(void)
@@ -223,6 +246,45 @@ void DMA1_Stream0_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles EXTI line[9:5] interrupts.
+  */
+void EXTI9_5_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI9_5_IRQn 0 */
+
+  /*if(__HAL_GPIO_EXTI_GET_FLAG(GPIO_PIN_7))
+  {
+    bq24072_handle_charging();
+  }*/
+
+  /* USER CODE END EXTI9_5_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_7);
+  /* USER CODE BEGIN EXTI9_5_IRQn 1 */
+
+  __HAL_GPIO_EXTI_CLEAR_FLAG(GPIO_PIN_7);
+
+  /* USER CODE END EXTI9_5_IRQn 1 */
+}
+
+/**
+  * @brief This function handles TIM1 update interrupt.
+  */
+void TIM1_UP_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM1_UP_IRQn 0 */
+
+  //uptime_inc();
+
+  //bq24072_poll();
+
+  /* USER CODE END TIM1_UP_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim1);
+  /* USER CODE BEGIN TIM1_UP_IRQn 1 */
+
+  /* USER CODE END TIM1_UP_IRQn 1 */
+}
+
+/**
   * @brief This function handles SAI1 global interrupt.
   */
 void SAI1_IRQHandler(void)
@@ -234,6 +296,20 @@ void SAI1_IRQHandler(void)
   /* USER CODE BEGIN SAI1_IRQn 1 */
 
   /* USER CODE END SAI1_IRQn 1 */
+}
+
+/**
+  * @brief This function handles LTDC global interrupt.
+  */
+void LTDC_IRQHandler(void)
+{
+  /* USER CODE BEGIN LTDC_IRQn 0 */
+
+  /* USER CODE END LTDC_IRQn 0 */
+  HAL_LTDC_IRQHandler(&hltdc);
+  /* USER CODE BEGIN LTDC_IRQn 1 */
+
+  /* USER CODE END LTDC_IRQn 1 */
 }
 
 /**

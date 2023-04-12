@@ -40,6 +40,8 @@
 #include "zelda3/types.h"
 #include "zelda3/zelda_rtl.h"
 
+#include "common.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -69,6 +71,8 @@ OSPI_HandleTypeDef hospi1;
 SAI_HandleTypeDef hsai_BlockA1;
 DMA_HandleTypeDef hdma_sai1_a;
 
+TIM_HandleTypeDef htim1;
+
 SPI_HandleTypeDef hspi2;
 
 /* USER CODE BEGIN PV */
@@ -89,6 +93,7 @@ static void MX_LTDC_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_OCTOSPI1_Init(void);
 static void MX_SAI1_Init(void);
+static void MX_TIM1_Init(void);
 static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -262,49 +267,10 @@ static uint32 renderedFrameCtr = 0;
 #define BRIGHTNESS_MAX 9
 static const uint8_t backlightLevels[] = {128, 130, 133, 139, 149, 162, 178, 198, 222, 255};
 
-#define AUDIO_SAMPLE_RATE   (32000)   // SAI Sample rate
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60)  // SNES is 60 fps
 #define AUDIO_BUFFER_LENGTH_DMA ((2 * AUDIO_SAMPLE_RATE) / 60)  // DMA buffer contains 2 frames worth of audio samples in a ring buffer
-#define AUDIO_VOLUME_MIN 0
-#define AUDIO_VOLUME_MAX 9
 
-typedef enum {
-    DMA_TRANSFER_STATE_HF = 0x00, // DMA buffer read until half --> write to first half
-    DMA_TRANSFER_STATE_TC = 0x01, // DMA buffer read until end --> write to second half
-} dma_transfer_state_t;
-
-int16_t audiobuffer[AUDIO_BUFFER_LENGTH];
-int16_t audiobuffer_dma[AUDIO_BUFFER_LENGTH * 2];
 uint8_t volume = 4;// FIXME Load default volume from config in extflash ?
 uint8_t brightness = 4;// FIXME Load default volume from config in extflash ?
-
-dma_transfer_state_t dma_state;
-uint32_t dma_counter;
-
-const uint8_t volume_tbl[AUDIO_VOLUME_MAX + 1] = {
-    (uint8_t)(UINT8_MAX * 0.00f),
-    (uint8_t)(UINT8_MAX * 0.06f),
-    (uint8_t)(UINT8_MAX * 0.125f),
-    (uint8_t)(UINT8_MAX * 0.187f),
-    (uint8_t)(UINT8_MAX * 0.25f),
-    (uint8_t)(UINT8_MAX * 0.35f),
-    (uint8_t)(UINT8_MAX * 0.42f),
-    (uint8_t)(UINT8_MAX * 0.60f),
-    (uint8_t)(UINT8_MAX * 0.80f),
-    (uint8_t)(UINT8_MAX * 1.00f),
-};
-
-void HAL_SAI_TxHalfCpltCallback(SAI_HandleTypeDef *hsai)
-{
-    dma_counter++;
-    dma_state = DMA_TRANSFER_STATE_HF;
-}
-
-void HAL_SAI_TxCpltCallback(SAI_HandleTypeDef *hsai)
-{
-    dma_counter++;
-    dma_state = DMA_TRANSFER_STATE_TC;
-}
 
 void pcm_submit() {
     int32_t factor = volume_tbl[volume];
@@ -517,6 +483,8 @@ static void DrawPpuFrameWithPerf() {
 
   //ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags); // FIXME SHOULD DRAW RGB565 !!!
 
+  static runtime_stats_t stats;
+  static bool statsInit = false;
 
   static float history[64], average;
   static int history_pos;
@@ -532,6 +500,16 @@ static void DrawPpuFrameWithPerf() {
   // Render fps with dots
   for (uint8_t y = 1; y<=60; y++) {
     framebuffer[y*2*320+300] = (y <= g_curr_fps ? 0x07e0 : 0xf800);
+  }
+  if (!statsInit || (frameCtr % 60) == 0) {
+    stats = odroid_system_get_stats();
+    statsInit = true;
+  }
+  for (uint8_t y = 1; y<=60; y++) {
+    framebuffer[y*2*320+302] = (y <= (stats.totalFPS - stats.skippedFPS) ? 0x07e0 : 0xf800);
+  }
+  for (uint8_t y = 1; y<=stats.skippedFPS; y++) {
+    framebuffer[y*2*320+303] = 0xffff;
   }
 
   // Render audio volume
@@ -716,14 +694,20 @@ void app_main(void)
             lcd_backlight_set(backlightLevels[brightness]);
           }
         }
-
         
         
         // Clear gamepad inputs when joypad directional inputs to avoid wonkiness
         int inputs = g_input1_state;
         if (g_input1_state & 0xf0)
-        g_gamepad_buttons = 0;
+          g_gamepad_buttons = 0;
         inputs |= g_gamepad_buttons;
+
+        
+
+
+        bool drawFrame = common_emu_frame_loop();
+
+
 
         bool is_replay = ZeldaRunFrame(inputs);
 
@@ -736,20 +720,47 @@ void app_main(void)
         // DO NOT skip audio frames
         // Render audio to DMA buffer
         ZeldaRenderAudio(audiobuffer, AUDIO_BUFFER_LENGTH, 1);
-        pcm_submit();
-        //ZeldaDiscardUnusedAudioFrames();
 
-        // Skip frames
-        //thisFrameTick = HAL_GetTick();
-        if (prevTime > 34) {
-          prevTime -= 17;
-          continue;
+        if (drawFrame) {
+        
+          pcm_submit();
+          ZeldaDiscardUnusedAudioFrames();
+
+          // TODO Cap framerate to 60fps
+
+          // TODO Render two frames + display only one to achieve consistent 30fps ???
+
+          // Skip frames
+          //thisFrameTick = HAL_GetTick();
+          /*if (prevTime > 34) {
+            prevTime -= 17;
+            continue;
+          }*/
+
+          prevFrameTick = HAL_GetTick();
+          renderedFrameCtr++;
+          DrawPpuFrameWithPerf();
+          prevTime = HAL_GetTick() - prevFrameTick;
+
         }
 
-        prevFrameTick = HAL_GetTick();
-        renderedFrameCtr++;
-        DrawPpuFrameWithPerf();
-        prevTime = HAL_GetTick() - prevFrameTick;
+        // FIXME if no frame skip
+        //if (prevTime < 17) {
+        if(!common_emu_state.skip_frames)
+        {
+            // odroid_audio_submit(pcm.buf, pcm.pos >> 1);
+            // handled in pcm_submit instead.
+            static dma_transfer_state_t last_dma_state = DMA_TRANSFER_STATE_HF;
+            // FIXME pause frame ???
+            for(uint8_t p = 0; p < common_emu_state.pause_frames + 1; p++) {
+                // TODO only if audio data ???
+                while (dma_state == last_dma_state) {
+                    cpumon_sleep();
+                }
+                last_dma_state = dma_state;
+            }
+        }
+        //}
 
     }
 
@@ -795,6 +806,7 @@ int main(void)
   MX_SPI2_Init();
   MX_OCTOSPI1_Init();
   MX_SAI1_Init();
+  MX_TIM1_Init();
 
   /* Initialize interrupts */
   MX_NVIC_Init();
@@ -1276,6 +1288,53 @@ static void MX_SPI2_Init(void)
 }
 
 /**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 14000;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 20000;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -1369,6 +1428,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
 }
 
