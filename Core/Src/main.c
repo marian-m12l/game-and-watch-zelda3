@@ -51,6 +51,11 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+#if !defined(GNW_TARGET_ZELDA)
+#define GNW_TARGET_ZELDA 0
+#endif /* GNW_TARGET_ZELDA */
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -267,7 +272,11 @@ static uint32 renderedFrameCtr = 0;
 #define BRIGHTNESS_MAX 9
 static const uint8_t backlightLevels[] = {128, 130, 133, 139, 149, 162, 178, 198, 222, 255};
 
-#define AUDIO_BUFFER_LENGTH_DMA ((2 * AUDIO_SAMPLE_RATE) / 60)  // DMA buffer contains 2 frames worth of audio samples in a ring buffer
+#define AUDIO_SAMPLE_RATE   (16000)   // SAI Sample rate
+#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 30)  // SNES is 60 fps FIXME limited to 30 fps
+#define AUDIO_BUFFER_LENGTH_DMA ((2 * AUDIO_SAMPLE_RATE) / 30)  // DMA buffer contains 2 frames worth of audio samples in a ring buffer
+#define AUDIO_VOLUME_MIN 0
+#define AUDIO_VOLUME_MAX 9
 
 uint8_t volume = 4;// FIXME Load default volume from config in extflash ?
 uint8_t brightness = 4;// FIXME Load default volume from config in extflash ?
@@ -309,11 +318,23 @@ static void set_audio_frequency(uint32_t frequency)
 
     PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SAI1;
 
+    if (frequency == 16000)
+    {
+
+        PeriphClkInitStruct.PLL2.PLL2M = 25;
+        PeriphClkInitStruct.PLL2.PLL2N = 128;
+        PeriphClkInitStruct.PLL2.PLL2P = 10;
+        PeriphClkInitStruct.PLL2.PLL2Q = 2;
+        PeriphClkInitStruct.PLL2.PLL2R = 5;
+        PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_1;
+        PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
+        PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
+    }
     /* Reconfigure on the fly PLL2 */
     /* config to get 32768Hz */
     /* The audio clock frequency is derived directly */
     /* SAI mode is MCKDIV mode */
-    if (frequency == 32768)
+    else if (frequency == 32768)
     {
 
         PeriphClkInitStruct.PLL2.PLL2M = 25;
@@ -655,19 +676,36 @@ void app_main(void)
             GW_EnterDeepSleep();
         }
 
-        HandleCommand(1, !(buttons & B_GAME) && (buttons & B_Up));
-        HandleCommand(2, !(buttons & B_GAME) && (buttons & B_Down));
-        HandleCommand(3, !(buttons & B_GAME) && (buttons & B_Left));
-        HandleCommand(4, !(buttons & B_GAME) && (buttons & B_Right));
-        HandleCommand(7, !(buttons & B_GAME) && (buttons & B_A));
-        HandleCommand(8, !(buttons & B_GAME) && (buttons & B_B));
-        HandleCommand(9, !(buttons & B_GAME) && (buttons & B_TIME));    // X
-        HandleCommand(10, !(buttons & B_GAME) && (buttons & B_PAUSE));  // Y
-        
-        HandleCommand(5, (buttons & B_GAME) && (buttons & B_TIME));   // Select
-        HandleCommand(6, (buttons & B_GAME) && (buttons & B_PAUSE));  // Start
-        HandleCommand(11, (buttons & B_GAME) && (buttons & B_B)); // L
-        HandleCommand(12, (buttons & B_GAME) && (buttons & B_A)); // R
+
+        #if GNW_TARGET_ZELDA != 0
+            HandleCommand(1, !(buttons & B_GAME) && (buttons & B_Up));
+            HandleCommand(2, !(buttons & B_GAME) && (buttons & B_Down));
+            HandleCommand(3, !(buttons & B_GAME) && (buttons & B_Left));
+            HandleCommand(4, !(buttons & B_GAME) && (buttons & B_Right));
+            HandleCommand(7, !(buttons & B_GAME) && (buttons & B_A));
+            HandleCommand(8, !(buttons & B_GAME) && (buttons & B_B));
+            HandleCommand(9, (buttons & B_START));    // X
+            HandleCommand(10, (buttons & B_SELECT));  // Y
+            
+            HandleCommand(5, (buttons & B_TIME));   // Select
+            HandleCommand(6, (buttons & B_PAUSE));  // Start
+            HandleCommand(11, (buttons & B_GAME) && (buttons & B_B)); // L
+            HandleCommand(12, (buttons & B_GAME) && (buttons & B_A)); // R
+        #else 
+            HandleCommand(1, !(buttons & B_GAME) && (buttons & B_Up));
+            HandleCommand(2, !(buttons & B_GAME) && (buttons & B_Down));
+            HandleCommand(3, !(buttons & B_GAME) && (buttons & B_Left));
+            HandleCommand(4, !(buttons & B_GAME) && (buttons & B_Right));
+            HandleCommand(7, !(buttons & B_GAME) && (buttons & B_A));
+            HandleCommand(8, !(buttons & B_GAME) && (buttons & B_B));
+            HandleCommand(9, !(buttons & B_GAME) && (buttons & B_TIME));    // X
+            HandleCommand(10, !(buttons & B_GAME) && (buttons & B_PAUSE));  // Y
+            
+            HandleCommand(5, (buttons & B_GAME) && (buttons & B_TIME));   // Select
+            HandleCommand(6, (buttons & B_GAME) && (buttons & B_PAUSE));  // Start
+            HandleCommand(11, (buttons & B_GAME) && (buttons & B_B)); // L
+            HandleCommand(12, (buttons & B_GAME) && (buttons & B_A)); // R
+        #endif /* GNW_TARGET_ZELDA */
 
         // Adjust volume FIXME debounce
         if ((buttons & B_GAME) && (buttons & B_Left)) {
@@ -719,7 +757,11 @@ void app_main(void)
         
         // DO NOT skip audio frames
         // Render audio to DMA buffer
-        ZeldaRenderAudio(audiobuffer, AUDIO_BUFFER_LENGTH, 1);
+        ZeldaRenderAudio(audiobuffer, AUDIO_BUFFER_LENGTH / 2, 1);
+
+        // FIXME Render two frames worth of gameplay / audio for each screen render
+        ZeldaRunFrame(inputs);
+        ZeldaRenderAudio(audiobuffer + (AUDIO_BUFFER_LENGTH / 2), AUDIO_BUFFER_LENGTH / 2, 1);
 
         if (drawFrame) {
         
@@ -741,7 +783,6 @@ void app_main(void)
           renderedFrameCtr++;
           DrawPpuFrameWithPerf();
           prevTime = HAL_GetTick() - prevFrameTick;
-
         }
 
         // FIXME if no frame skip
@@ -1224,7 +1265,7 @@ static void MX_SAI1_Init(void)
   hsai_BlockA1.Init.OutputDrive = SAI_OUTPUTDRIVE_DISABLE;
   hsai_BlockA1.Init.NoDivider = SAI_MASTERDIVIDER_ENABLE;
   hsai_BlockA1.Init.FIFOThreshold = SAI_FIFOTHRESHOLD_FULL;
-  hsai_BlockA1.Init.AudioFrequency = SAI_AUDIO_FREQUENCY_32K;
+  hsai_BlockA1.Init.AudioFrequency = SAI_AUDIO_FREQUENCY_16K;
   hsai_BlockA1.Init.SynchroExt = SAI_SYNCEXT_DISABLE;
   hsai_BlockA1.Init.MonoStereoMode = SAI_MONOMODE;
   hsai_BlockA1.Init.CompandingMode = SAI_NOCOMPANDING;
@@ -1399,6 +1440,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(BTN_PWR_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : BTN_START_Pin BTN_SELECT_Pin */
+  GPIO_InitStruct.Pin = BTN_START_Pin|BTN_SELECT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PA4 PA5 PA6 */
   /*GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6;

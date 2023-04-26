@@ -38,6 +38,22 @@ ENABLE_SCREENSHOT ?= 0
 
 
 
+# Configure Game & Watch target device mario|zelda
+GNW_TARGET ?= mario
+
+# Set the preprocessor options
+ifeq ($(GNW_TARGET),mario)
+	GNW_TARGET_ZELDA = 0
+	GNW_TARGET_MARIO = 1
+else ifeq ($(GNW_TARGET),zelda)
+	GNW_TARGET_ZELDA = 1
+	GNW_TARGET_MARIO = 0
+else
+$(error Invalid GNW_TARGET. Valid values {mario|zelda})
+endif
+
+
+
 #######################################
 # paths
 #######################################
@@ -163,7 +179,10 @@ AS_DEFS =
 C_DEFS =  \
 -DINTFLASH_BANK=$(INTFLASH_BANK) \
 -DUSE_HAL_DRIVER \
--DSTM32H7B0xx
+-DSTM32H7B0xx \
+-DENABLE_SCREENSHOT=$(ENABLE_SCREENSHOT) \
+-DGNW_TARGET_MARIO=$(GNW_TARGET_MARIO) \
+-DGNW_TARGET_ZELDA=$(GNW_TARGET_ZELDA)
 
 
 # AS includes
