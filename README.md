@@ -1,6 +1,6 @@
 # Port of reverse engineered zelda3
 
-All credits for reverse engineering goes to TODO
+All credits for reverse engineering goes to https://github.com/snesrev/zelda3
 
 ## Requirements
 
