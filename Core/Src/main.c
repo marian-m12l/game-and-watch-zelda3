@@ -30,9 +30,9 @@
 #include "gw_linker.h"
 
 // FIXME ??? #include "porting.h"
-#include "zelda_assets.h"
 #include "zelda_assets_in_intflash.h"
 #include "zelda_assets_in_ram.h"
+#include "zelda_assets_in_extflash.h"
 
 #include "zelda3/assets.h"
 #include "zelda3/config.h"
@@ -429,68 +429,36 @@ static void set_audio_frequency(uint32_t frequency)
 const uint8 *g_asset_ptrs[kNumberOfAssets];
 uint32 g_asset_sizes[kNumberOfAssets];
 
-
-static void LoadAssets() {
-  // TODO static allocation --> direct flash access???
-
-  size_t length = zelda_assets_length;
-  uint8 *data = zelda_assets;
-  
-  static const char kAssetsSig[] = { kAssets_Sig };
-
-  if (length < 16 + 32 + 32 + 8 + kNumberOfAssets * 4 ||
-      memcmp(data, kAssetsSig, 48) != 0 ||
-      *(uint32*)(data + 80) != kNumberOfAssets)
-    Die("Invalid assets file");
-
-  uint32 offset = 88 + kNumberOfAssets * 4 + *(uint32 *)(data + 84);
-
-  for (size_t i = 0; i < kNumberOfAssets; i++) {
-    uint32 size = *(uint32 *)(data + 88 + i * 4);
+static void LoadAssetsChunk(size_t length, uint8* data) {
+  uint32 number_of_assets = *(uint32 *)(data);
+  uint32 offset = 4 + number_of_assets * 8;
+  for (size_t i = 0; i < number_of_assets; i++) {
+    uint32 index = *(uint32 *)(data + 4 + i * 8);
+    uint32 size = *(uint32 *)(data + 4 + i * 8 + 4);
     offset = (offset + 3) & ~3;
     if ((uint64)offset + size > length)
       Die("Assets file corruption");
-    g_asset_sizes[i] = size;
-    g_asset_ptrs[i] = data + offset;
+    g_asset_sizes[index] = size;
+    g_asset_ptrs[index] = data + offset;
     offset += size;
   }
+}
 
-  //Overload some assets with assets in intflash
-  size_t length_intflash_assets = zelda_intflash_assets_length;
-  uint8 *data_intflash_assets = zelda_intflash_assets;
+static void LoadAssets() {
+  // Load some assets with assets in extflash
+  LoadAssetsChunk(zelda_extflash_assets_length, zelda_extflash_assets);
 
-  uint32 number_of_intflash_assets = *(uint32 *)(data_intflash_assets);
-  
-  offset = 4 + number_of_intflash_assets * 8;
+  // Load some assets with assets in intflash
+  LoadAssetsChunk(zelda_intflash_assets_length, zelda_intflash_assets);
 
-  for (size_t i = 0; i < number_of_intflash_assets; i++) {
-    uint32 index = *(uint32 *)(data_intflash_assets + 4 + i * 8);
-    uint32 size = *(uint32 *)(data_intflash_assets + 4 + i * 8 + 4);
-    offset = (offset + 3) & ~3;
-    if ((uint64)offset + size > length_intflash_assets)
-      Die("Assets in INTFLASH file corruption");
-    g_asset_sizes[index] = size;
-    g_asset_ptrs[index] = data_intflash_assets + offset;
-    offset += size;
-  }
+  // Load some assets with assets in ram
+  LoadAssetsChunk(zelda_ram_assets_length, zelda_ram_assets);
 
-  //Overload some assets with assets in ram
-  size_t length_ram_assets = zelda_ram_assets_length;
-  uint8 *data_ram_assets = zelda_ram_assets;
-
-  uint32 number_of_ram_assets = *(uint32 *)(data_ram_assets);
-  
-  offset = 4 + number_of_ram_assets * 8;
-
-  for (size_t i = 0; i < number_of_ram_assets; i++) {
-    uint32 index = *(uint32 *)(data_ram_assets + 4 + i * 8);
-    uint32 size = *(uint32 *)(data_ram_assets + 4 + i * 8 + 4);
-    offset = (offset + 3) & ~3;
-    if ((uint64)offset + size > length_ram_assets)
-      Die("Assets in RAM file corruption");
-    g_asset_sizes[index] = size;
-    g_asset_ptrs[index] = data_ram_assets + offset;
-    offset += size;
+  // Make sure all assets were loaded
+  for (size_t i = 0; i < kNumberOfAssets; i++) {
+    if (g_asset_ptrs[i] == 0) {
+      Die("Missing asset");
+    }
   }
 
 }

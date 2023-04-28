@@ -33,6 +33,12 @@ EXTFLASH_SIZE_MB ?= 15
 
 EXTFLASH_SIZE ?= $(shell echo "$$(( $(EXTFLASH_SIZE_MB) * 1024 * 1024 ))")
 
+EXTFLASH_ADDRESS ?= $(shell echo "$$(( $(EXTFLASH_OFFSET) + 0x90000000 ))")
+
+LARGE_FLASH ?= 0
+export LARGE_FLASH  # Used in stm32h7x_spiflash.cfg
+
+
 # Screenshot support allocates 150kB of external flash
 ENABLE_SCREENSHOT ?= 0
 
@@ -71,37 +77,10 @@ Core/Src/main.c \
 Core/Src/gw_flash.c \
 Core/Src/stm32h7xx_it.c \
 Core/Src/stm32h7xx_hal_msp.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_cortex.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dac.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dac_ex.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_ltdc.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_ltdc_ex.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rcc.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rcc_ex.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_flash.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_flash_ex.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_gpio.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_hsem.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dma.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dma_ex.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_mdma.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_pwr.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_pwr_ex.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_i2c.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_i2c_ex.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_exti.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_tim.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_tim_ex.c \
 Core/Src/system_stm32h7xx.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_spi.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_spi_ex.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_ospi.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai.c \
-Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai_ex.c \
-Core/Src/porting/zelda_assets.c \
 Core/Src/porting/zelda_assets_in_intflash.c \
 Core/Src/porting/zelda_assets_in_ram.c \
+Core/Src/porting/zelda_assets_in_extflash.c \
 Core/Src/porting/common.c \
 zelda3/zelda_rtl.c \
 zelda3/misc.c \
@@ -131,9 +110,106 @@ zelda3/third_party/opus-1.3.1-stripped/opus_decoder_amalgam.c \
 zelda3/tile_detect.c \
 zelda3/overlord.c \
 
-# ASM sources
-ASM_SOURCES =  \
-startup_stm32h7b0xx.s
+
+# Version and URL for the STM32CubeH7 SDK
+SDK_VERSION ?= v1.8.0
+SDK_URL ?= https://raw.githubusercontent.com/STMicroelectronics/STM32CubeH7
+
+# Local path for the SDK
+SDK_DIR ?= Drivers
+
+
+# SDK C sources
+SDK_C_SOURCES =  \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_adc.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_adc_ex.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_cortex.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dac_ex.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dac.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dma_ex.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dma.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dma2d.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_exti.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_flash_ex.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_flash.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_gpio.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_hsem.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_i2c_ex.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_i2c.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_jpeg.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_ltdc_ex.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_ltdc.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_mdma.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_ospi.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_pwr_ex.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_pwr.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rcc_ex.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rcc.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rtc_ex.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_rtc.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai_ex.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_spi_ex.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_spi.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_tim_ex.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_tim.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_wwdg.c \
+Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal.c \
+
+
+# SDK ASM sources
+SDK_ASM_SOURCES =  \
+Drivers/CMSIS/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h7b0xx.s
+
+# SDK headers
+SDK_HEADERS = \
+Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h7b0xx.h \
+Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h7xx.h \
+Drivers/CMSIS/Device/ST/STM32H7xx/Include/system_stm32h7xx.h \
+Drivers/CMSIS/Include/cmsis_compiler.h \
+Drivers/CMSIS/Include/cmsis_gcc.h \
+Drivers/CMSIS/Include/cmsis_version.h \
+Drivers/CMSIS/Include/core_cm7.h \
+Drivers/CMSIS/Include/mpu_armv7.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/Legacy/stm32_hal_legacy.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_adc.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_adc.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_adc_ex.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_cortex.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_dac_ex.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_dac.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_def.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_dma_ex.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_dma.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_dma2d.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_exti.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_flash_ex.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_flash.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_gpio_ex.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_gpio.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_hsem.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_i2c_ex.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_i2c.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_jpeg.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_ltdc_ex.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_ltdc.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_mdma.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_ospi.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr_ex.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pwr.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_rcc_ex.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_rcc.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_rtc_ex.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_rtc.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_sai_ex.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_sai.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi_ex.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_spi.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim_ex.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_wwdg.h \
+Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h \
+
 
 
 #######################################
@@ -155,6 +231,7 @@ SZ = $(PREFIX)size
 endif
 HEX = $(CP) -O ihex
 BIN = $(CP) -O binary -S
+ECHO  = echo
  
 #######################################
 # CFLAGS
@@ -243,20 +320,46 @@ LDFLAGS += $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(B
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET)_extflash.bin $(BUILD_DIR)/$(TARGET)_intflash.bin
 
 
+
+#######################################
+# download SDK files
+#######################################
+$(SDK_DIR)/%:
+	$(V)$(ECHO) [ WGET ] $(notdir $@)
+	$(V)wget -q $(SDK_URL)/$(SDK_VERSION)/$@ -P $(dir $@)
+
+.PHONY: download_sdk
+download_sdk: $(SDK_HEADERS) $(SDK_C_SOURCES) $(SDK_ASM_SOURCES)
+
+
 #######################################
 # build the application
 #######################################
 # list of objects
-OBJECTS = $(addprefix $(BUILD_DIR)/,$(notdir $(C_SOURCES:.c=.o)))
-vpath %.c $(sort $(dir $(C_SOURCES)))
+OBJECTS = $(addprefix $(BUILD_DIR)/,$(notdir $(C_SOURCES:.c=.o) $(SDK_C_SOURCES:.c=.o)))
+vpath %.c $(sort $(dir $(C_SOURCES) $(SDK_C_SOURCES)))
 # list of ASM program objects
-OBJECTS += $(addprefix $(BUILD_DIR)/,$(notdir $(ASM_SOURCES:.s=.o)))
-vpath %.s $(sort $(dir $(ASM_SOURCES)))
+OBJECTS += $(addprefix $(BUILD_DIR)/,$(notdir $(SDK_ASM_SOURCES:.s=.o)))
+vpath %.s $(sort $(dir $(SDK_ASM_SOURCES)))
 
-$(BUILD_DIR)/%.o: %.c Makefile | $(BUILD_DIR) 
+
+
+# function used to generate prerequisite rules for SDK objects
+define sdk_obj_prereq_gen
+$(BUILD_DIR)/$(patsubst %.c,%.o,$(patsubst %.s,%.o,$(notdir $1))): $1
+
+endef
+# note: the blank line above is intentional
+
+# generate all object prerequisite rules
+$(eval $(foreach obj,$(SDK_C_SOURCES) $(SDK_ASM_SOURCES),$(call sdk_obj_prereq_gen,$(obj))))
+
+
+
+$(BUILD_DIR)/%.o: %.c Makefile $(SDK_HEADERS) | $(BUILD_DIR) 
 	$(CC) -c $(CFLAGS) -Wa,-a,-ad,-alms=$(BUILD_DIR)/$(notdir $(<:.c=.lst)) $< -o $@
 
-$(BUILD_DIR)/%.o: %.s Makefile | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: %.s Makefile $(SDK_HEADERS) | $(BUILD_DIR)
 	$(AS) -c $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/$(TARGET).elf: $(OBJECTS) Makefile
@@ -269,15 +372,21 @@ $(BUILD_DIR)/%.hex: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
 $(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
 	$(BIN) $< $@	
 	
+Core/Src/porting/zelda_assets_%.c: zelda3/tables/zelda3_assets.dat | $(BUILD_DIR)
+	python3 ./scripts/bundle_all_assets.py
+	python3 ./scripts/update_all_assets.py
+
+zelda3/tables/zelda3_assets.dat: zelda3/tables/zelda3.sfc | $(BUILD_DIR)
+	cd zelda3 && make tables/zelda3_assets.dat
+	
 $(BUILD_DIR):
 	mkdir $@		
 
 
 
 OPENOCD ?= openocd
-OCDIFACE ?= scripts/interface_jlink.cfg #interface/jlink.cfg
 ADAPTER=jlink
-FLASH_MULTI ?= ../game-and-watch-flashloader/flash_multi.sh
+OCDIFACE ?= scripts/interface_$(ADAPTER).cfg
 
 #flash: $(BUILD_DIR)/$(TARGET).bin
 #	dd if=$(BUILD_DIR)/$(TARGET).bin of=$(BUILD_DIR)/$(TARGET)_flash.bin bs=1024 count=128
@@ -303,7 +412,7 @@ flash_intflash: $(BUILD_DIR)/$(TARGET)_intflash.bin
 .PHONY: flash_intflash
 
 flash_extflash: $(BUILD_DIR)/$(TARGET)_extflash.bin
-	ADAPTER=${ADAPTER} $(FLASH_MULTI) $(BUILD_DIR)/$(TARGET)_extflash.bin $(EXTFLASH_OFFSET)
+	$(OPENOCD) -f $(OCDIFACE) -c "program $< $(EXTFLASH_ADDRESS) verify reset exit"
 .PHONY: flash_extflash
 
 # Programs both the external and internal flash.

@@ -19,7 +19,6 @@ fi
 
 # Note that 0x90000000 is subtracted from the address.
 address=$(get_symbol __SAVEFLASH_START__)
-address=$(($address - 0x90000000))
 size=8192
 image="${INFILE}"
 
@@ -31,7 +30,7 @@ if [[ -e "$image" ]]; then
     echo "    save_size=$size"
     echo ""
     echo ""
-    ${FLASH_MULTI} "${image}" ${address} ${size}
+	${OPENOCD} -f scripts/interface_${ADAPTER}.cfg -c "program ${image} ${address} verify reset exit"
 else
     echo ""
     echo ""

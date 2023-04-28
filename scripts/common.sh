@@ -26,15 +26,15 @@ else
     DEFAULT_GDB=arm-none-eabi-gdb
 fi
 
-FLASHAPP=scripts/flashapp.sh
-#FLASH_MULTI=scripts/flash_multi.sh
-FLASH_MULTI=../game-and-watch-flashloader/flash_multi.sh
 
 OBJDUMP=${OBJDUMP:-$DEFAULT_OBJDUMP}
 GDB=${GDB:-$DEFAULT_GDB}
 
 ADAPTER=${ADAPTER:-stlink}
 OPENOCD=${OPENOCD:-$(which openocd || true)}
+
+LARGE_FLASH=0
+export LARGE_FLASH  # Used in stm32h7x_spiflash.cfg
 
 RESET_DBGMCU=${RESET_DBGMCU:-1}
 

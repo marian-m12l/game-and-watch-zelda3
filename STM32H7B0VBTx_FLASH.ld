@@ -274,7 +274,7 @@ SECTIONS
     
     build/opus_decoder_amalgam.o (.text .text* .rodata .rodata*)
 
-    build/zelda_assets.o (.text .text* .rodata .rodata*)
+    build/zelda_assets_in_extflash.o (.text .text* .rodata .rodata*)
 
     __extflash_end__ = .;
   } >EXTFLASH
