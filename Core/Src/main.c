@@ -273,8 +273,13 @@ static uint32 renderedFrameCtr = 0;
 static const uint8_t backlightLevels[] = {128, 130, 133, 139, 149, 162, 178, 198, 222, 255};
 
 #define AUDIO_SAMPLE_RATE   (16000)   // SAI Sample rate
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 30)  // SNES is 60 fps FIXME limited to 30 fps
-#define AUDIO_BUFFER_LENGTH_DMA ((2 * AUDIO_SAMPLE_RATE) / 30)  // DMA buffer contains 2 frames worth of audio samples in a ring buffer
+#if LIMIT_30FPS != 0
+#define FRAMERATE 30
+#else
+#define FRAMERATE 60
+#endif /* LIMIT_30FPS */
+#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / FRAMERATE)  // SNES is 60 fps FIXME limited to 30 fps
+#define AUDIO_BUFFER_LENGTH_DMA ((2 * AUDIO_SAMPLE_RATE) / FRAMERATE)  // DMA buffer contains 2 frames worth of audio samples in a ring buffer
 #define AUDIO_VOLUME_MIN 0
 #define AUDIO_VOLUME_MAX 9
 
@@ -285,17 +290,17 @@ void pcm_submit() {
     int32_t factor = volume_tbl[volume];
     size_t offset = (dma_state == DMA_TRANSFER_STATE_HF) ? 0 : AUDIO_BUFFER_LENGTH;
 
-    /* FIXME Handle mute
-    if (audio_mute || volume == ODROID_AUDIO_VOLUME_MIN) {
-        for (int i = 0; i < AUDIO_BUFFER_LENGTH_GB; i++) {
+    // Handle mute
+    if (volume == AUDIO_VOLUME_MIN) {
+        for (int i = 0; i < AUDIO_BUFFER_LENGTH; i++) {
             audiobuffer_dma[i + offset] = 0;
         }
-    } else {*/
+    } else {
         for (int i = 0; i < AUDIO_BUFFER_LENGTH; i++) {
             int32_t sample = audiobuffer[i];
             audiobuffer_dma[i + offset] = (sample * factor) >> 8;
         }
-    //}
+    }
 }
 
 
@@ -490,11 +495,11 @@ static void DrawPpuFrameWithPerf() {
   for (uint8_t y = 1; y<=60; y++) {
     framebuffer[y*2*320+300] = (y <= g_curr_fps ? 0x07e0 : 0xf800);
   }
-  if (!statsInit || (frameCtr % 60) == 0) {
+  if (!statsInit || (frameCtr % FRAMERATE) == 0) {
     stats = odroid_system_get_stats();
     statsInit = true;
   }
-  for (uint8_t y = 1; y<=60; y++) {
+  for (uint8_t y = 1; y<=FRAMERATE; y++) {
     framebuffer[y*2*320+302] = (y <= (stats.totalFPS - stats.skippedFPS) ? 0x07e0 : 0xf800);
   }
   for (uint8_t y = 1; y<=stats.skippedFPS; y++) {
@@ -516,6 +521,11 @@ static void DrawPpuFrameWithPerf() {
   for (uint16_t x = 1; x<=(renderedFrameCtr%(160*5)); x++) {
     framebuffer[235*320+x*2] = 0x07e0;  // FIXME WIDTH
   }*/
+
+  // Render overclocking level with dots
+  for (uint16_t x = 0; x<=OVERCLOCK; x++) {
+    framebuffer[2*320+5+x*2] = 0x07e0;
+  }
 
 }
 
@@ -625,6 +635,8 @@ void app_main(void)
     uint32 prevTime = 0;
     //uint32 thisFrameTick = 0;
 
+    common_emu_state.frame_time_10us = (uint16_t)(100000 / FRAMERATE + 0.5f);
+
     while(running) {
 
         if (g_paused != audiopaused) {
@@ -723,13 +735,16 @@ void app_main(void)
         continue;
         }*/
         
-        // DO NOT skip audio frames
+        
+        #if LIMIT_30FPS != 0
         // Render audio to DMA buffer
         ZeldaRenderAudio(audiobuffer, AUDIO_BUFFER_LENGTH / 2, 1);
-
         // FIXME Render two frames worth of gameplay / audio for each screen render
         ZeldaRunFrame(inputs);
         ZeldaRenderAudio(audiobuffer + (AUDIO_BUFFER_LENGTH / 2), AUDIO_BUFFER_LENGTH / 2, 1);
+        #else
+        ZeldaRenderAudio(audiobuffer, AUDIO_BUFFER_LENGTH, 1);
+        #endif /* LIMIT_30FPS*/
 
         if (drawFrame) {
         
@@ -921,11 +936,26 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   // BOOST 1: PLLM = 16 PLLN=156 PLLP=2 PLLQ=6 PLLR=2 CLOCKPLL >> 312MHz CoreClock and OSPI 104MHz
+  // BOOST 2: PLLM = 38 PLLN=420 PLLP=2 PLLQ=7 PLLR=2 CLOCKPLL >> 3..MHz CoreClock and OSPI 100MHz
+  #if OVERCLOCK == 1
   RCC_OscInitStruct.PLL.PLLM = 16;
-  RCC_OscInitStruct.PLL.PLLN = 156; //140;
+  RCC_OscInitStruct.PLL.PLLN = 156;
   RCC_OscInitStruct.PLL.PLLP = 2;
-  RCC_OscInitStruct.PLL.PLLQ = 6; //2;
+  RCC_OscInitStruct.PLL.PLLQ = 6;
   RCC_OscInitStruct.PLL.PLLR = 2;
+  #elif OVERCLOCK == 2
+  RCC_OscInitStruct.PLL.PLLM = 38;
+  RCC_OscInitStruct.PLL.PLLN = 420;
+  RCC_OscInitStruct.PLL.PLLP = 2;
+  RCC_OscInitStruct.PLL.PLLQ = 7;
+  RCC_OscInitStruct.PLL.PLLR = 2;
+  #else
+  RCC_OscInitStruct.PLL.PLLM = 16;
+  RCC_OscInitStruct.PLL.PLLN = 140;
+  RCC_OscInitStruct.PLL.PLLP = 2;
+  RCC_OscInitStruct.PLL.PLLQ = 2;
+  RCC_OscInitStruct.PLL.PLLR = 2;
+  #endif
   RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_2;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
   RCC_OscInitStruct.PLL.PLLFRACN = 0;

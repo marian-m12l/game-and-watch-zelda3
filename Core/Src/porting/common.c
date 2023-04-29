@@ -63,7 +63,7 @@ void odroid_audio_mute(bool mute)
 }
 
 common_emu_state_t common_emu_state = {
-    .frame_time_10us = (uint16_t)(100000 / 30 + 0.5f),  // Reasonable default of 60FPS if not explicitly configured. FIXME limited to 30 fps
+    .frame_time_10us = (uint16_t)(100000 / 60 + 0.5f),  // Reasonable default of 60FPS if not explicitly configured.
 };
 
 

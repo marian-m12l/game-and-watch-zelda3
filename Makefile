@@ -42,6 +42,12 @@ export LARGE_FLASH  # Used in stm32h7x_spiflash.cfg
 # Screenshot support allocates 150kB of external flash
 ENABLE_SCREENSHOT ?= 0
 
+# Limit to 30 fps for improved stability
+LIMIT_30FPS ?= 1
+
+# Overclock level: 0 (no overclocking), 1 (intermediate overclocking), or 2 (max overclocking)
+OVERCLOCK ?= 2
+
 
 
 # Configure Game & Watch target device mario|zelda
@@ -259,7 +265,9 @@ C_DEFS =  \
 -DSTM32H7B0xx \
 -DENABLE_SCREENSHOT=$(ENABLE_SCREENSHOT) \
 -DGNW_TARGET_MARIO=$(GNW_TARGET_MARIO) \
--DGNW_TARGET_ZELDA=$(GNW_TARGET_ZELDA)
+-DGNW_TARGET_ZELDA=$(GNW_TARGET_ZELDA) \
+-DLIMIT_30FPS=$(LIMIT_30FPS) \
+-DOVERCLOCK=$(OVERCLOCK)
 
 
 # AS includes
