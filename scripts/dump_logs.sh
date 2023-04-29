@@ -9,7 +9,7 @@ else
 fi
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-ELF=${DIR}/../build/gw_base.elf
+ELF=${DIR}/../build/gw_zelda3.elf
 
 make openocd > /dev/null 2> /dev/null &
 

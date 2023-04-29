@@ -13,7 +13,7 @@
 ######################################
 # target
 ######################################
-TARGET = gw_base
+TARGET = gw_zelda3
 
 
 ######################################
@@ -385,7 +385,7 @@ $(BUILD_DIR):
 
 
 OPENOCD ?= openocd
-ADAPTER=jlink
+ADAPTER ?= jlink
 OCDIFACE ?= scripts/interface_$(ADAPTER).cfg
 
 #flash: $(BUILD_DIR)/$(TARGET).bin
