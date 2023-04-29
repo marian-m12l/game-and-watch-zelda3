@@ -278,8 +278,8 @@ static const uint8_t backlightLevels[] = {128, 130, 133, 139, 149, 162, 178, 198
 #else
 #define FRAMERATE 60
 #endif /* LIMIT_30FPS */
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / FRAMERATE)  // SNES is 60 fps FIXME limited to 30 fps
-#define AUDIO_BUFFER_LENGTH_DMA ((2 * AUDIO_SAMPLE_RATE) / FRAMERATE)  // DMA buffer contains 2 frames worth of audio samples in a ring buffer
+#define AUDIO_BUFFER_LENGTH 534 // (AUDIO_SAMPLE_RATE / FRAMERATE)  // SNES is 60 fps FIXME limited to 30 fps
+#define AUDIO_BUFFER_LENGTH_DMA (2 * AUDIO_BUFFER_LENGTH) // ((2 * AUDIO_SAMPLE_RATE) / FRAMERATE)  // DMA buffer contains 2 frames worth of audio samples in a ring buffer
 #define AUDIO_VOLUME_MIN 0
 #define AUDIO_VOLUME_MAX 9
 
