@@ -432,6 +432,10 @@ flash:
 .PHONY: flash
 
 
+reset:
+	$(OPENOCD) -f $(OCDIFACE) -c "init; reset; exit"
+.PHONY: reset
+
 reset_dbgmcu:
 	# Reset the DBGMCU configuration register (DBGMCU_CR)
 	$(V)$(OPENOCD) -f ${OCDIFACE} -c "init; reset halt; mww 0x5C001004 0x00000000; resume; exit;"
