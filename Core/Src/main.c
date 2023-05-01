@@ -258,7 +258,7 @@ static uint8 g_gamepad_buttons;
 static int g_input1_state;
 static bool g_display_perf;
 static int g_curr_fps;
-static int g_ppu_render_flags = kPpuRenderFlags_NewRenderer;
+static int g_ppu_render_flags = kPpuRenderFlags_NewRenderer | kPpuRenderFlags_Height240;
 static int g_snes_width, g_snes_height;
 //static int g_sdl_audio_mixer_volume = SDL_MIX_MAXVOLUME;
 //static struct RendererFuncs g_renderer_funcs;
@@ -472,7 +472,7 @@ static void LoadAssets() {
 static void DrawPpuFrameWithPerf() {
   /*int render_scale = PpuGetCurrentRenderScale(g_zenv.ppu, g_ppu_render_flags);*/
 
-  uint8 *pixel_buffer = framebuffer + 320*8 + 32;    // Start 8 rows from the top, 32 pixels from left
+  uint8 *pixel_buffer = framebuffer + 32;    // Start 32 pixels from left
   int pitch = 320 * 2; // FIXME WIDTH * BPP; // FIXME 0;
 
   //ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags); // FIXME SHOULD DRAW RGB565 !!!
