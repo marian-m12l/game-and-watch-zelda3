@@ -23,6 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "stm32h7xx_hal.h"
 #include "buttons.h"  // FIXME replace with gw_buttons ???
 #include "lcd.h"      // FIXME replace with gw_lcd ??? handle dual framebuffer ???
 
@@ -67,6 +68,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 
+bool wdog_enabled = false;
 DAC_HandleTypeDef hdac1;
 DAC_HandleTypeDef hdac2;
 
@@ -107,6 +109,7 @@ static void MX_NVIC_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+WWDG_HandleTypeDef hwwdg1;
 
 ingame_overlay_t ingame_overlay = INGAME_OVERLAY_NONE;
 uint32_t overlay_start_ms = 0;
@@ -121,6 +124,48 @@ const char *fault_list[] = {
   [BSOD_WATCHDOG] = "Watchdog",
   [BSOD_OTHER] = "Other",
 };
+
+/**
+  * @brief WWDG1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_WWDG1_Init(void)
+{
+
+  /* USER CODE BEGIN WWDG1_Init 0 */
+
+  /* USER CODE END WWDG1_Init 0 */
+
+  /* USER CODE BEGIN WWDG1_Init 1 */
+
+  /* USER CODE END WWDG1_Init 1 */
+  hwwdg1.Instance = WWDG1;
+  hwwdg1.Init.Prescaler = WWDG_PRESCALER_128;
+  hwwdg1.Init.Window = 127;
+  hwwdg1.Init.Counter = 127;
+  hwwdg1.Init.EWIMode = WWDG_EWI_ENABLE;
+  if (HAL_WWDG_Init(&hwwdg1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN WWDG1_Init 2 */
+
+  /* USER CODE END WWDG1_Init 2 */
+
+}
+static void wdog_enable()
+{
+  MX_WWDG1_Init();
+  wdog_enabled = true;
+}
+
+static void wdog_refresh()
+{
+  if (wdog_enabled) {
+    HAL_WWDG_Refresh(&hwwdg1);
+  }
+}
 
 __attribute__((optimize("-O0"))) void BSOD(BSOD_t fault, uint32_t pc, uint32_t lr)
 {
@@ -182,7 +227,7 @@ __attribute__((optimize("-O0"))) void BSOD(BSOD_t fault, uint32_t pc, uint32_t l
   // Wait for a button press (allows a user to hold and release a button when the BSOD occurs)
   uint32_t old_buttons = buttons_get();
   while ((buttons_get() == 0 || (buttons_get() == old_buttons))) {
-    //wdog_refresh();
+    wdog_refresh();
   }
 
   HAL_NVIC_SystemReset();
@@ -215,7 +260,7 @@ void GW_EnterDeepSleep(void)
   // Delay 500ms to give us a chance to attach a debugger in case
   // we end up in a suspend-loop.
   for (int i = 0; i < 10; i++) {
-      //wdog_refresh();
+      wdog_refresh();
       HAL_Delay(50);
   }
 
@@ -468,6 +513,7 @@ static void LoadAssets() {
 
 static void DrawPpuFrameWithPerf() {
   /*int render_scale = PpuGetCurrentRenderScale(g_zenv.ppu, g_ppu_render_flags);*/
+  wdog_refresh();
 
   uint8 *pixel_buffer = framebuffer + 32;    // Start 32 pixels from left
   int pitch = 320 * 2; // FIXME WIDTH * BPP; // FIXME 0;
@@ -620,6 +666,8 @@ void writeSramImpl(uint8_t* sram) {
 
 void app_main(void)
 {
+    wdog_enable();
+
     LoadAssets();
     
     ZeldaInitialize();
