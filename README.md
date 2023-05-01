@@ -18,7 +18,8 @@ git clone --recurse-submodules https://github.com/marian-m12l/game-and-watch-zel
 pip3 install -r zelda3/requirements.txt
 ```
 
-- Place your US ROM file named `zelda3.sfc` in `zelda3/tables`
+- Place your US ROM file named `zelda3.sfc` in `zelda3/tables`.
+
 
 - Compile and flash (e.g. on internal flash bank 2, leaving 1MB (out of 16) for stock firmware at the beginning of extflash)
 ```sh
