@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <stdint.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -107,6 +108,9 @@ static void MX_NVIC_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+ingame_overlay_t ingame_overlay = INGAME_OVERLAY_NONE;
+uint32_t overlay_start_ms = 0;
+#define OVERLAY_DURATION_MS 5000
 
 const char *fault_list[] = {
   [BSOD_ABORT] = "Assert",
@@ -268,9 +272,6 @@ static uint16 g_gamepad_last_cmd[kGamepadBtn_Count];
 static uint32 frameCtr = 0;
 static uint32 renderedFrameCtr = 0;
 
-#define BRIGHTNESS_MIN 1
-#define BRIGHTNESS_MAX 9
-static const uint8_t backlightLevels[] = {128, 130, 133, 139, 149, 162, 178, 198, 222, 255};
 
 #define AUDIO_SAMPLE_RATE   (16000)   // SAI Sample rate
 #if LIMIT_30FPS != 0
@@ -280,11 +281,7 @@ static const uint8_t backlightLevels[] = {128, 130, 133, 139, 149, 162, 178, 198
 #endif /* LIMIT_30FPS */
 #define AUDIO_BUFFER_LENGTH 534 // (AUDIO_SAMPLE_RATE / FRAMERATE)  // SNES is 60 fps FIXME limited to 30 fps
 #define AUDIO_BUFFER_LENGTH_DMA (2 * AUDIO_BUFFER_LENGTH) // ((2 * AUDIO_SAMPLE_RATE) / FRAMERATE)  // DMA buffer contains 2 frames worth of audio samples in a ring buffer
-#define AUDIO_VOLUME_MIN 0
-#define AUDIO_VOLUME_MAX 9
 
-uint8_t volume = 4;// FIXME Load default volume from config in extflash ?
-uint8_t brightness = 7;// FIXME Load default volume from config in extflash ?
 
 void pcm_submit() {
     int32_t factor = volume_tbl[volume];
@@ -485,6 +482,15 @@ static void DrawPpuFrameWithPerf() {
   uint32 before = HAL_GetTick();
   ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags | RENDER_STEP_FLAGS | ((renderedFrameCtr & 0xf) << 24));
   uint32 after = HAL_GetTick();
+
+  if(after - overlay_start_ms < OVERLAY_DURATION_MS){
+    draw_ingame_overlay(framebuffer, ingame_overlay);
+  }
+  else{
+    ingame_overlay = INGAME_OVERLAY_NONE;
+  }
+  /* PERFORMANCE STUFF */
+#if 0
   float v = (double)1000.0f / (after - before);
   average += v - history[history_pos];
   history[history_pos] = v;
@@ -526,6 +532,7 @@ static void DrawPpuFrameWithPerf() {
   for (uint16_t x = 0; x<=OVERCLOCK; x++) {
     framebuffer[2*320+5+x*2] = 0x07e0;
   }
+#endif
 
 }
 
@@ -613,12 +620,14 @@ void writeSramImpl(uint8_t* sram) {
 
 void app_main(void)
 {
-    
     LoadAssets();
     
     ZeldaInitialize();
 
-    g_wanted_zelda_features = kFeatures0_SkipIntroOnKeypress;
+    g_wanted_zelda_features = (
+        kFeatures0_SkipIntroOnKeypress  // Avoid waiting too much at the start
+        | kFeatures0_DisableLowHealthBeep  // Disable the low health beep
+      );
 
     ZeldaEnableMsu(false);
     
@@ -662,13 +671,16 @@ void app_main(void)
             HandleCommand(2, !(buttons & B_GAME) && (buttons & B_Down));
             HandleCommand(3, !(buttons & B_GAME) && (buttons & B_Left));
             HandleCommand(4, !(buttons & B_GAME) && (buttons & B_Right));
-            HandleCommand(7, !(buttons & B_GAME) && (buttons & B_A));
-            HandleCommand(8, !(buttons & B_GAME) && (buttons & B_B));
-            HandleCommand(9, (buttons & B_START));    // X
-            HandleCommand(10, (buttons & B_SELECT));  // Y
+
+            HandleCommand(7, !(buttons & B_GAME) && (buttons & B_A));  // A (Pegasus Boots/Interacting)
+            HandleCommand(8, !(buttons & B_GAME) && (buttons & B_B));  // B (Sword)
             
-            HandleCommand(5, (buttons & B_TIME));   // Select
-            HandleCommand(6, (buttons & B_PAUSE));  // Start
+            HandleCommand(9, (buttons & B_START));    // X (Show Map)
+            HandleCommand(10, (buttons & B_SELECT));  // Y (Use Item)
+            
+            HandleCommand(5, (buttons & B_TIME));   // Select (Save Screen)
+            HandleCommand(6, (buttons & B_PAUSE));  // Start (Item Selection Screen)
+            
             HandleCommand(11, (buttons & B_GAME) && (buttons & B_B)); // L
             HandleCommand(12, (buttons & B_GAME) && (buttons & B_A)); // R
         #else 
@@ -692,11 +704,15 @@ void app_main(void)
           if (volume > AUDIO_VOLUME_MIN) {
             volume--;
           }
+          ingame_overlay = INGAME_OVERLAY_VOLUME;
+          overlay_start_ms = HAL_GetTick();
         }
         if ((buttons & B_GAME) && (buttons & B_Right)) {
           if (volume < AUDIO_VOLUME_MAX) {
             volume++;
           }
+          ingame_overlay = INGAME_OVERLAY_VOLUME;
+          overlay_start_ms = HAL_GetTick();
         }
 
         // Adjust brightness FIXME debounce
@@ -705,12 +721,16 @@ void app_main(void)
             brightness--;
             lcd_backlight_set(backlightLevels[brightness]);
           }
+          ingame_overlay = INGAME_OVERLAY_BRIGHTNESS;
+          overlay_start_ms = HAL_GetTick();
         }
         if ((buttons & B_GAME) && (buttons & B_Up)) {
           if (brightness < BRIGHTNESS_MAX) {
             brightness++;
             lcd_backlight_set(backlightLevels[brightness]);
           }
+          ingame_overlay = INGAME_OVERLAY_BRIGHTNESS;
+          overlay_start_ms = HAL_GetTick();
         }
         
         

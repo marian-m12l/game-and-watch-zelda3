@@ -4,9 +4,10 @@
 #include "stm32h7xx_hal.h"
 #include <stdint.h>
 
-extern uint16_t framebuffer[320 * 240];
+#define GW_LCD_WIDTH 320
+#define GW_LCD_HEIGHT 240
 
-#define GFX_MAX_WIDTH 320
+extern uint16_t framebuffer[GW_LCD_WIDTH * GW_LCD_HEIGHT];
 
 void lcd_init(SPI_HandleTypeDef *spi, LTDC_HandleTypeDef *ltdc);
 void lcd_deinit(SPI_HandleTypeDef *spi);
