@@ -284,7 +284,7 @@ static const uint8_t backlightLevels[] = {128, 130, 133, 139, 149, 162, 178, 198
 #define AUDIO_VOLUME_MAX 9
 
 uint8_t volume = 4;// FIXME Load default volume from config in extflash ?
-uint8_t brightness = 4;// FIXME Load default volume from config in extflash ?
+uint8_t brightness = 7;// FIXME Load default volume from config in extflash ?
 
 void pcm_submit() {
     int32_t factor = volume_tbl[volume];
