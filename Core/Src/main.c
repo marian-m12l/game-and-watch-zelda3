@@ -545,6 +545,7 @@ static void DrawPpuFrameWithPerf() {
   history_pos = (history_pos + 1) & 63;
   g_curr_fps = average * (1.0f / 64);
 
+#if RENDER_FPS
   // Render fps with dots
   for (uint8_t y = 1; y<=60; y++) {
     framebuffer[y*2*320+300] = (y <= g_curr_fps ? 0x07e0 : 0xf800);
@@ -580,6 +581,7 @@ static void DrawPpuFrameWithPerf() {
   for (uint16_t x = 0; x<=OVERCLOCK; x++) {
     framebuffer[2*320+5+x*2] = 0x07e0;
   }
+#endif
 }
 
 

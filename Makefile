@@ -48,6 +48,8 @@ LIMIT_30FPS ?= 1
 # Overclock level: 0 (no overclocking), 1 (intermediate overclocking), or 2 (max overclocking)
 OVERCLOCK ?= 2
 
+RENDER_FPS ?= 0
+
 
 
 # Configure Game & Watch target device mario|zelda
@@ -267,7 +269,8 @@ C_DEFS =  \
 -DGNW_TARGET_MARIO=$(GNW_TARGET_MARIO) \
 -DGNW_TARGET_ZELDA=$(GNW_TARGET_ZELDA) \
 -DLIMIT_30FPS=$(LIMIT_30FPS) \
--DOVERCLOCK=$(OVERCLOCK)
+-DOVERCLOCK=$(OVERCLOCK) \
+-DRENDER_FPS=$(RENDER_FPS) \
 
 
 # AS includes
