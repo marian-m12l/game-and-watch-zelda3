@@ -19,9 +19,11 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <stdint.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "stm32h7xx_hal.h"
 #include "buttons.h"  // FIXME replace with gw_buttons ???
 #include "lcd.h"      // FIXME replace with gw_lcd ??? handle dual framebuffer ???
 
@@ -66,6 +68,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 
+bool wdog_enabled = false;
 DAC_HandleTypeDef hdac1;
 DAC_HandleTypeDef hdac2;
 
@@ -106,7 +109,12 @@ static void MX_NVIC_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+WWDG_HandleTypeDef hwwdg1;
 
+ingame_overlay_t ingame_overlay = INGAME_OVERLAY_NONE;
+uint32_t overlay_start_ms = 0;
+#define OVERLAY_DURATION_MS 5000
+#define POWER_BUTTON_DELAY_MS 300
 
 const char *fault_list[] = {
   [BSOD_ABORT] = "Assert",
@@ -117,6 +125,48 @@ const char *fault_list[] = {
   [BSOD_WATCHDOG] = "Watchdog",
   [BSOD_OTHER] = "Other",
 };
+
+/**
+  * @brief WWDG1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_WWDG1_Init(void)
+{
+
+  /* USER CODE BEGIN WWDG1_Init 0 */
+
+  /* USER CODE END WWDG1_Init 0 */
+
+  /* USER CODE BEGIN WWDG1_Init 1 */
+
+  /* USER CODE END WWDG1_Init 1 */
+  hwwdg1.Instance = WWDG1;
+  hwwdg1.Init.Prescaler = WWDG_PRESCALER_128;
+  hwwdg1.Init.Window = 127;
+  hwwdg1.Init.Counter = 127;
+  hwwdg1.Init.EWIMode = WWDG_EWI_ENABLE;
+  if (HAL_WWDG_Init(&hwwdg1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN WWDG1_Init 2 */
+
+  /* USER CODE END WWDG1_Init 2 */
+
+}
+static void wdog_enable()
+{
+  MX_WWDG1_Init();
+  wdog_enabled = true;
+}
+
+static void wdog_refresh()
+{
+  if (wdog_enabled) {
+    HAL_WWDG_Refresh(&hwwdg1);
+  }
+}
 
 __attribute__((optimize("-O0"))) void BSOD(BSOD_t fault, uint32_t pc, uint32_t lr)
 {
@@ -178,7 +228,7 @@ __attribute__((optimize("-O0"))) void BSOD(BSOD_t fault, uint32_t pc, uint32_t l
   // Wait for a button press (allows a user to hold and release a button when the BSOD occurs)
   uint32_t old_buttons = buttons_get();
   while ((buttons_get() == 0 || (buttons_get() == old_buttons))) {
-    //wdog_refresh();
+    wdog_refresh();
   }
 
   HAL_NVIC_SystemReset();
@@ -211,7 +261,7 @@ void GW_EnterDeepSleep(void)
   // Delay 500ms to give us a chance to attach a debugger in case
   // we end up in a suspend-loop.
   for (int i = 0; i < 10; i++) {
-      //wdog_refresh();
+      wdog_refresh();
       HAL_Delay(50);
   }
 
@@ -258,7 +308,7 @@ static uint8 g_gamepad_buttons;
 static int g_input1_state;
 static bool g_display_perf;
 static int g_curr_fps;
-static int g_ppu_render_flags = kPpuRenderFlags_NewRenderer;
+static int g_ppu_render_flags = kPpuRenderFlags_NewRenderer | kPpuRenderFlags_Height240;
 static int g_snes_width, g_snes_height;
 //static int g_sdl_audio_mixer_volume = SDL_MIX_MAXVOLUME;
 //static struct RendererFuncs g_renderer_funcs;
@@ -268,9 +318,6 @@ static uint16 g_gamepad_last_cmd[kGamepadBtn_Count];
 static uint32 frameCtr = 0;
 static uint32 renderedFrameCtr = 0;
 
-#define BRIGHTNESS_MIN 1
-#define BRIGHTNESS_MAX 9
-static const uint8_t backlightLevels[] = {128, 130, 133, 139, 149, 162, 178, 198, 222, 255};
 
 #define AUDIO_SAMPLE_RATE   (16000)   // SAI Sample rate
 #if LIMIT_30FPS != 0
@@ -280,11 +327,7 @@ static const uint8_t backlightLevels[] = {128, 130, 133, 139, 149, 162, 178, 198
 #endif /* LIMIT_30FPS */
 #define AUDIO_BUFFER_LENGTH 534 // (AUDIO_SAMPLE_RATE / FRAMERATE)  // SNES is 60 fps FIXME limited to 30 fps
 #define AUDIO_BUFFER_LENGTH_DMA (2 * AUDIO_BUFFER_LENGTH) // ((2 * AUDIO_SAMPLE_RATE) / FRAMERATE)  // DMA buffer contains 2 frames worth of audio samples in a ring buffer
-#define AUDIO_VOLUME_MIN 0
-#define AUDIO_VOLUME_MAX 9
 
-uint8_t volume = 4;// FIXME Load default volume from config in extflash ?
-uint8_t brightness = 4;// FIXME Load default volume from config in extflash ?
 
 void pcm_submit() {
     int32_t factor = volume_tbl[volume];
@@ -471,8 +514,9 @@ static void LoadAssets() {
 
 static void DrawPpuFrameWithPerf() {
   /*int render_scale = PpuGetCurrentRenderScale(g_zenv.ppu, g_ppu_render_flags);*/
+  wdog_refresh();
 
-  uint8 *pixel_buffer = framebuffer + 320*8 + 32;    // Start 8 rows from the top, 32 pixels from left
+  uint8 *pixel_buffer = framebuffer + 32;    // Start 32 pixels from left
   int pitch = 320 * 2; // FIXME WIDTH * BPP; // FIXME 0;
 
   //ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags); // FIXME SHOULD DRAW RGB565 !!!
@@ -485,12 +529,24 @@ static void DrawPpuFrameWithPerf() {
   uint32 before = HAL_GetTick();
   ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags | RENDER_STEP_FLAGS | ((renderedFrameCtr & 0xf) << 24));
   uint32 after = HAL_GetTick();
+
+  // Draw borders
+  draw_border(framebuffer);
+
+  if(after - overlay_start_ms < OVERLAY_DURATION_MS){
+    draw_ingame_overlay(framebuffer, ingame_overlay);
+  }
+  else{
+    ingame_overlay = INGAME_OVERLAY_NONE;
+  }
+  /* PERFORMANCE STUFF */
   float v = (double)1000.0f / (after - before);
   average += v - history[history_pos];
   history[history_pos] = v;
   history_pos = (history_pos + 1) & 63;
   g_curr_fps = average * (1.0f / 64);
 
+#if RENDER_FPS
   // Render fps with dots
   for (uint8_t y = 1; y<=60; y++) {
     framebuffer[y*2*320+300] = (y <= g_curr_fps ? 0x07e0 : 0xf800);
@@ -526,7 +582,7 @@ static void DrawPpuFrameWithPerf() {
   for (uint16_t x = 0; x<=OVERCLOCK; x++) {
     framebuffer[2*320+5+x*2] = 0x07e0;
   }
-
+#endif
 }
 
 
@@ -613,12 +669,16 @@ void writeSramImpl(uint8_t* sram) {
 
 void app_main(void)
 {
-    
+    wdog_enable();
+
     LoadAssets();
     
     ZeldaInitialize();
 
-    g_wanted_zelda_features = kFeatures0_SkipIntroOnKeypress;
+    g_wanted_zelda_features = (
+        kFeatures0_SkipIntroOnKeypress  // Avoid waiting too much at the start
+        | kFeatures0_DisableLowHealthBeep  // Disable the low health beep
+      );
 
     ZeldaEnableMsu(false);
     
@@ -637,6 +697,9 @@ void app_main(void)
 
     common_emu_state.frame_time_10us = (uint16_t)(100000 / FRAMERATE + 0.5f);
 
+    uint32_t prev_buttons = 0;
+    uint32_t prev_power_ms = 0;
+    bool prompting_to_save = false;
     while(running) {
 
         if (g_paused != audiopaused) {
@@ -652,23 +715,39 @@ void app_main(void)
 
         // Handle power off / deep sleep
         if (buttons & B_POWER) {
-            //HAL_SAI_DMAStop(&hsai_BlockA1);
-            GW_EnterDeepSleep();
+          if(prompting_to_save){
+            if((HAL_GetTick() - prev_power_ms) > POWER_BUTTON_DELAY_MS){
+              //HAL_SAI_DMAStop(&hsai_BlockA1);
+              GW_EnterDeepSleep();
+            }
+          }
+          else{
+            prev_power_ms = HAL_GetTick();
+            prompting_to_save = true;
+            buttons |= B_TIME;  // Simulate pressing SELECT
+          }
         }
-
+        else if (buttons){
+          // If any button except POWER has been pressed
+          prompting_to_save = false;
+        }
 
         #if GNW_TARGET_ZELDA != 0
             HandleCommand(1, !(buttons & B_GAME) && (buttons & B_Up));
             HandleCommand(2, !(buttons & B_GAME) && (buttons & B_Down));
             HandleCommand(3, !(buttons & B_GAME) && (buttons & B_Left));
             HandleCommand(4, !(buttons & B_GAME) && (buttons & B_Right));
-            HandleCommand(7, !(buttons & B_GAME) && (buttons & B_A));
-            HandleCommand(8, !(buttons & B_GAME) && (buttons & B_B));
-            HandleCommand(9, (buttons & B_START));    // X
-            HandleCommand(10, (buttons & B_SELECT));  // Y
+
+            HandleCommand(7, !(buttons & B_GAME) && (buttons & B_A));  // A (Pegasus Boots/Interacting)
+            HandleCommand(8, !(buttons & B_GAME) && (buttons & B_B));  // B (Sword)
             
-            HandleCommand(5, (buttons & B_TIME));   // Select
-            HandleCommand(6, (buttons & B_PAUSE));  // Start
+            HandleCommand(9, (buttons & B_PAUSE));    // X (Show Map)
+            HandleCommand(10, (buttons & B_SELECT));  // Y (Use Item)
+            
+            HandleCommand(5, (buttons & B_TIME));   // Select (Save Screen)
+            HandleCommand(6, (buttons & B_START));  // Start (Item Selection Screen)
+            
+            // L & R aren't used in Zelda3, but we could enable item quick-swapping.
             HandleCommand(11, (buttons & B_GAME) && (buttons & B_B)); // L
             HandleCommand(12, (buttons & B_GAME) && (buttons & B_A)); // R
         #else 
@@ -687,30 +766,37 @@ void app_main(void)
             HandleCommand(12, (buttons & B_GAME) && (buttons & B_A)); // R
         #endif /* GNW_TARGET_ZELDA */
 
-        // Adjust volume FIXME debounce
-        if ((buttons & B_GAME) && (buttons & B_Left)) {
+        #define B_MACRO_CHECK(x, y) ((buttons & x) && (buttons & y) && prev_buttons != buttons)
+        
+        if (B_MACRO_CHECK(B_GAME, B_Left)){
           if (volume > AUDIO_VOLUME_MIN) {
             volume--;
           }
+          ingame_overlay = INGAME_OVERLAY_VOLUME;
+          overlay_start_ms = HAL_GetTick();
         }
-        if ((buttons & B_GAME) && (buttons & B_Right)) {
+        if (B_MACRO_CHECK(B_GAME, B_Right)){
           if (volume < AUDIO_VOLUME_MAX) {
             volume++;
           }
+          ingame_overlay = INGAME_OVERLAY_VOLUME;
+          overlay_start_ms = HAL_GetTick();
         }
-
-        // Adjust brightness FIXME debounce
-        if ((buttons & B_GAME) && (buttons & B_Down)) {
+        if (B_MACRO_CHECK(B_GAME, B_Down)){
           if (brightness > BRIGHTNESS_MIN) {
             brightness--;
             lcd_backlight_set(backlightLevels[brightness]);
           }
+          ingame_overlay = INGAME_OVERLAY_BRIGHTNESS;
+          overlay_start_ms = HAL_GetTick();
         }
-        if ((buttons & B_GAME) && (buttons & B_Up)) {
+        if (B_MACRO_CHECK(B_GAME, B_Up)){
           if (brightness < BRIGHTNESS_MAX) {
             brightness++;
             lcd_backlight_set(backlightLevels[brightness]);
           }
+          ingame_overlay = INGAME_OVERLAY_BRIGHTNESS;
+          overlay_start_ms = HAL_GetTick();
         }
         
         
@@ -785,6 +871,7 @@ void app_main(void)
             }
         }
         //}
+        prev_buttons = buttons;
 
     }
 

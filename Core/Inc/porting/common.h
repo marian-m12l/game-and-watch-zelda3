@@ -95,7 +95,29 @@ typedef struct {
     uint8_t overlay:3;
 } common_emu_state_t;
 
+typedef uint16_t pixel_t;
+
 extern common_emu_state_t common_emu_state;
+
+extern const uint8_t backlightLevels[];
+extern uint8_t volume;
+extern uint8_t brightness;
+
+#define BRIGHTNESS_MIN 1
+#define BRIGHTNESS_MAX 9
+
+#define AUDIO_VOLUME_MIN 0
+#define AUDIO_VOLUME_MAX 9
+
+enum {
+    INGAME_OVERLAY_NONE,
+    INGAME_OVERLAY_VOLUME,
+    INGAME_OVERLAY_BRIGHTNESS,
+};
+typedef uint8_t ingame_overlay_t;
+
 
 void odroid_system_tick(uint32_t skippedFrame, uint32_t fullFrame, uint32_t busyTime);
 runtime_stats_t odroid_system_get_stats();
+void draw_ingame_overlay(pixel_t *fb, ingame_overlay_t overlay);
+void draw_border(pixel_t * fb);
