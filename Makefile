@@ -51,6 +51,54 @@ OVERCLOCK ?= 2
 RENDER_FPS ?= 0
 
 
+# Item switch on L/R. Also allows reordering of items in inventory by pressing Y+direction.
+# Hold X, L, or R inside of the item selection screen to assign items to those buttons.
+# If X is reassigned, Select opens the map. Push Select while paused to save or quit.
+# When L or R are assigned items, those buttons will no longer cycle items.
+FEATURE_SWITCH_LR ?= 0
+# Allow turning while dashing
+FEATURE_TURN_WHILE_DASHING ?= 0
+# Allow mirror to be used to warp to the Dark World
+FEATURE_MIRROR_TO_DARK_WORLD ?= 0
+# Collect items (like hearts) with sword instead of having to touch them
+FEATURE_COLLECT_ITEMS_WITH_SWORD ?= 0
+# Level 2-4 sword can be used to break pots
+FEATURE_BREAK_POTS_WITH_SWORD ?= 0
+# Disable the low health beep
+FEATURE_DISABLE_LOW_HEALTH_BEEP ?= 0
+# Avoid waiting too much at the start
+FEATURE_SKIP_INTRO_ON_KEYPRESS ?= 1
+# Display max rupees/bombs/arrows with orange/yellow color
+FEATURE_SHOW_MAX_ITEMS_IN_YELLOW ?= 0
+# Allows up to four bombs active at a time instead of two.
+FEATURE_MORE_ACTIVE_BOMBS ?= 0
+# Can carry 9999 rupees instead of 999
+FEATURE_CARRY_MORE_RUPEES ?= 0
+# Enable various zelda bug fixes
+FEATURE_MISC_BUG_FIXES ?= 0
+# Allow bird travel to be cancelled by hitting the X key
+FEATURE_CANCEL_BIRD_TRAVEL ?= 0
+# Enable some more advanced zelda bugfixes that change game behavior
+FEATURE_GAME_CHANGING_BUG_FIXES ?= 0
+# Enable this to limit the ItemSwitchLR item cycling to the first 4 items.
+FEATURE_SWITCH_LR_LIMIT ?= 0
+
+FEATURES := 0
+FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_SWITCH_LR) << 1 ))")
+FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_TURN_WHILE_DASHING) << 2 ))")
+FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_MIRROR_TO_DARK_WORLD) << 3 ))")
+FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_COLLECT_ITEMS_WITH_SWORD) << 4 ))")
+FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_BREAK_POTS_WITH_SWORD) << 5 ))")
+FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_DISABLE_LOW_HEALTH_BEEP) << 6 ))")
+FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_SKIP_INTRO_ON_KEYPRESS) << 7 ))")
+FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_SHOW_MAX_ITEMS_IN_YELLOW) << 8 ))")
+FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_MORE_ACTIVE_BOMBS) << 9 ))")
+FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_CARRY_MORE_RUPEES) << 11 ))")
+FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_MISC_BUG_FIXES) << 12 ))")
+FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_CANCEL_BIRD_TRAVEL) << 13 ))")
+FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_GAME_CHANGING_BUG_FIXES) << 14 ))")
+FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_SWITCH_LR_LIMIT) << 15 ))")
+
 
 # Configure Game & Watch target device mario|zelda
 GNW_TARGET ?= mario
@@ -271,6 +319,7 @@ C_DEFS =  \
 -DLIMIT_30FPS=$(LIMIT_30FPS) \
 -DOVERCLOCK=$(OVERCLOCK) \
 -DRENDER_FPS=$(RENDER_FPS) \
+-DFEATURES=$(FEATURES) \
 
 
 # AS includes

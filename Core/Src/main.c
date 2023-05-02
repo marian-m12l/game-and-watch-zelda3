@@ -675,10 +675,7 @@ void app_main(void)
     
     ZeldaInitialize();
 
-    g_wanted_zelda_features = (
-        kFeatures0_SkipIntroOnKeypress  // Avoid waiting too much at the start
-        | kFeatures0_DisableLowHealthBeep  // Disable the low health beep
-      );
+    g_wanted_zelda_features = FEATURES;
 
     ZeldaEnableMsu(false);
     
@@ -724,7 +721,11 @@ void app_main(void)
           else{
             prev_power_ms = HAL_GetTick();
             prompting_to_save = true;
-            buttons |= B_TIME;  // Simulate pressing SELECT
+            #if GNW_TARGET_ZELDA != 0
+              buttons |= B_TIME;  // Simulate pressing SELECT
+            #else 
+              buttons |= B_GAME | B_TIME;  // Simulate pressing SELECT
+            #endif
           }
         }
         else if (buttons){
