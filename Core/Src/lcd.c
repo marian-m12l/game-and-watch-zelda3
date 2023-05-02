@@ -2,7 +2,7 @@
 #include "stm32h7xx_hal.h"
 #include "main.h"
 
-uint16_t framebuffer[320 * 240];
+uint16_t framebuffer[GW_LCD_WIDTH * GW_LCD_HEIGHT];
 
 extern DAC_HandleTypeDef hdac1;
 extern DAC_HandleTypeDef hdac2;
@@ -35,9 +35,9 @@ void lcd_backlight_set(uint8_t brightness)
 
 void lcd_fill_framebuffer(uint8_t r, uint8_t g, uint8_t b) {
   uint16_t color = ((r & 0x1f) << 11) | ((g & 0x3f) << 5) | (b & 0x1f);
-  for (int y = 0; y < 240; y++) {
-      for (int x = 0; x < 320; x++) {
-          framebuffer[y*320 + x] = color;  // RGB565
+  for (int y = 0; y < GW_LCD_HEIGHT; y++) {
+      for (int x = 0; x < GW_LCD_WIDTH; x++) {
+          framebuffer[y*GW_LCD_WIDTH + x] = color;  // RGB565
       }
   }
 }
