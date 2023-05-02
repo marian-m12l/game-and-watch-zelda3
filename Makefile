@@ -50,6 +50,8 @@ OVERCLOCK ?= 2
 
 RENDER_FPS ?= 0
 
+PATCH_DIALOGUES ?= 0
+
 
 # Item switch on L/R. Also allows reordering of items in inventory by pressing Y+direction.
 # Hold X, L, or R inside of the item selection screen to assign items to those buttons.
@@ -422,7 +424,7 @@ $(BUILD_DIR)/%.o: %.c Makefile $(SDK_HEADERS) | $(BUILD_DIR)
 $(BUILD_DIR)/%.o: %.s Makefile $(SDK_HEADERS) | $(BUILD_DIR)
 	$(AS) -c $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/$(TARGET).elf: $(OBJECTS) Makefile
+$(BUILD_DIR)/$(TARGET).elf: assets_extraction $(OBJECTS) Makefile
 	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
 	$(SZ) $@
 
@@ -432,11 +434,25 @@ $(BUILD_DIR)/%.hex: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
 $(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
 	$(BIN) $< $@	
 	
+
+assets_extraction: Core/Src/porting/zelda_assets_in_extflash.c Core/Src/porting/zelda_assets_in_intflash.c Core/Src/porting/zelda_assets_in_ram.c
+
 Core/Src/porting/zelda_assets_%.c: zelda3/tables/zelda3_assets.dat | $(BUILD_DIR)
 	python3 ./scripts/bundle_all_assets.py
 	python3 ./scripts/update_all_assets.py
 
-zelda3/tables/zelda3_assets.dat: zelda3/tables/zelda3.sfc | $(BUILD_DIR)
+
+zelda3/tables/dialogue.txt: zelda3/tables/zelda3.sfc zelda3/tables/dialogue.txt.patched
+zelda3/tables/dialogue.txt.patched: scripts/dialogue.txt.diff
+	cd zelda3 && make tables/dialogue.txt
+	if [ $(PATCH_DIALOGUES) -gt 0 ]; then \
+		echo 'Patching dialogues file'; \
+		if [ -e $@ ]; then patch -R zelda3/tables/dialogue.txt $@; fi; \
+		patch zelda3/tables/dialogue.txt $<; \
+		cp scripts/dialogue.txt.diff $@; \
+	fi
+
+zelda3/tables/zelda3_assets.dat: zelda3/tables/zelda3.sfc zelda3/tables/dialogue.txt | $(BUILD_DIR)
 	cd zelda3 && make tables/zelda3_assets.dat
 	
 $(BUILD_DIR):
@@ -521,6 +537,8 @@ debug: $(BUILD_DIR)/$(TARGET).elf
 #######################################
 clean:
 	-rm -fR $(BUILD_DIR)
+	-rm -fR Core/Src/porting/zelda_assets_*.c
+	cd zelda3 && make clean
   
 #######################################
 # dependencies
