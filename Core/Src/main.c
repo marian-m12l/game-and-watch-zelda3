@@ -691,6 +691,7 @@ void app_main(void)
 
     common_emu_state.frame_time_10us = (uint16_t)(100000 / FRAMERATE + 0.5f);
 
+    uint32_t prev_buttons = 0;
     while(running) {
 
         if (g_paused != audiopaused) {
@@ -744,24 +745,23 @@ void app_main(void)
             HandleCommand(12, (buttons & B_GAME) && (buttons & B_A)); // R
         #endif /* GNW_TARGET_ZELDA */
 
-        // Adjust volume FIXME debounce
-        if ((buttons & B_GAME) && (buttons & B_Left)) {
+        #define B_MACRO_CHECK(x, y) ((buttons & x) && (buttons & y) && prev_buttons != buttons)
+        
+        if (B_MACRO_CHECK(B_GAME, B_Left)){
           if (volume > AUDIO_VOLUME_MIN) {
             volume--;
           }
           ingame_overlay = INGAME_OVERLAY_VOLUME;
           overlay_start_ms = HAL_GetTick();
         }
-        if ((buttons & B_GAME) && (buttons & B_Right)) {
+        if (B_MACRO_CHECK(B_GAME, B_Right)){
           if (volume < AUDIO_VOLUME_MAX) {
             volume++;
           }
           ingame_overlay = INGAME_OVERLAY_VOLUME;
           overlay_start_ms = HAL_GetTick();
         }
-
-        // Adjust brightness FIXME debounce
-        if ((buttons & B_GAME) && (buttons & B_Down)) {
+        if (B_MACRO_CHECK(B_GAME, B_Down)){
           if (brightness > BRIGHTNESS_MIN) {
             brightness--;
             lcd_backlight_set(backlightLevels[brightness]);
@@ -769,7 +769,7 @@ void app_main(void)
           ingame_overlay = INGAME_OVERLAY_BRIGHTNESS;
           overlay_start_ms = HAL_GetTick();
         }
-        if ((buttons & B_GAME) && (buttons & B_Up)) {
+        if (B_MACRO_CHECK(B_GAME, B_Up)){
           if (brightness < BRIGHTNESS_MAX) {
             brightness++;
             lcd_backlight_set(backlightLevels[brightness]);
@@ -850,6 +850,7 @@ void app_main(void)
             }
         }
         //}
+        prev_buttons = buttons;
 
     }
 

@@ -205,7 +205,7 @@ void draw_ingame_overlay(pixel_t *fb, ingame_overlay_t overlay){
             }
             break;
         case INGAME_OVERLAY_BRIGHTNESS:
-            bh = box_height(BRIGHTNESS_MAX - 1);
+            bh = box_height(BRIGHTNESS_MAX);
 
             draw_darken_rounded_rectangle(fb,
                     INGAME_OVERLAY_X,
@@ -214,7 +214,7 @@ void draw_ingame_overlay(pixel_t *fb, ingame_overlay_t overlay){
                     INGAME_OVERLAY_Y + INGAME_OVERLAY_BARS_H);
             draw_img(fb, IMG_SUN, INGAME_OVERLAY_BARS_IMG_X, INGAME_OVERLAY_BARS_IMG_Y);
 
-            for(int8_t i=BRIGHTNESS_MAX-1; i > 0; i--){
+            for(int8_t i=BRIGHTNESS_MAX; i > 0; i--){
                 if(i <= brightness)
                     draw_rectangle(fb,
                             INGAME_OVERLAY_BOX_X,
