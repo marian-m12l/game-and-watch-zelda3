@@ -529,6 +529,9 @@ static void DrawPpuFrameWithPerf() {
   ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags | RENDER_STEP_FLAGS | ((renderedFrameCtr & 0xf) << 24));
   uint32 after = HAL_GetTick();
 
+  // Draw borders
+  draw_border(framebuffer);
+
   if(after - overlay_start_ms < OVERLAY_DURATION_MS){
     draw_ingame_overlay(framebuffer, ingame_overlay);
   }

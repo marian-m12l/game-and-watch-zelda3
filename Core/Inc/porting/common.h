@@ -120,3 +120,4 @@ typedef uint8_t ingame_overlay_t;
 void odroid_system_tick(uint32_t skippedFrame, uint32_t fullFrame, uint32_t busyTime);
 runtime_stats_t odroid_system_get_stats();
 void draw_ingame_overlay(pixel_t *fb, ingame_overlay_t overlay);
+void draw_border(pixel_t * fb);
