@@ -114,6 +114,7 @@ WWDG_HandleTypeDef hwwdg1;
 ingame_overlay_t ingame_overlay = INGAME_OVERLAY_NONE;
 uint32_t overlay_start_ms = 0;
 #define OVERLAY_DURATION_MS 5000
+#define POWER_BUTTON_DELAY_MS 300
 
 const char *fault_list[] = {
   [BSOD_ABORT] = "Assert",
@@ -697,6 +698,8 @@ void app_main(void)
     common_emu_state.frame_time_10us = (uint16_t)(100000 / FRAMERATE + 0.5f);
 
     uint32_t prev_buttons = 0;
+    uint32_t prev_power_ms = 0;
+    bool prompting_to_save = false;
     while(running) {
 
         if (g_paused != audiopaused) {
@@ -712,10 +715,22 @@ void app_main(void)
 
         // Handle power off / deep sleep
         if (buttons & B_POWER) {
-            //HAL_SAI_DMAStop(&hsai_BlockA1);
-            GW_EnterDeepSleep();
+          if(prompting_to_save){
+            if((HAL_GetTick() - prev_power_ms) > POWER_BUTTON_DELAY_MS){
+              //HAL_SAI_DMAStop(&hsai_BlockA1);
+              GW_EnterDeepSleep();
+            }
+          }
+          else{
+            prev_power_ms = HAL_GetTick();
+            prompting_to_save = true;
+            buttons |= B_TIME;  // Simulate pressing SELECT
+          }
         }
-
+        else if (buttons){
+          // If any button except POWER has been pressed
+          prompting_to_save = false;
+        }
 
         #if GNW_TARGET_ZELDA != 0
             HandleCommand(1, !(buttons & B_GAME) && (buttons & B_Up));
@@ -726,12 +741,13 @@ void app_main(void)
             HandleCommand(7, !(buttons & B_GAME) && (buttons & B_A));  // A (Pegasus Boots/Interacting)
             HandleCommand(8, !(buttons & B_GAME) && (buttons & B_B));  // B (Sword)
             
-            HandleCommand(9, (buttons & B_START));    // X (Show Map)
+            HandleCommand(9, (buttons & B_PAUSE));    // X (Show Map)
             HandleCommand(10, (buttons & B_SELECT));  // Y (Use Item)
             
             HandleCommand(5, (buttons & B_TIME));   // Select (Save Screen)
-            HandleCommand(6, (buttons & B_PAUSE));  // Start (Item Selection Screen)
+            HandleCommand(6, (buttons & B_START));  // Start (Item Selection Screen)
             
+            // L & R aren't used in Zelda3, but we could enable item quick-swapping.
             HandleCommand(11, (buttons & B_GAME) && (buttons & B_B)); // L
             HandleCommand(12, (buttons & B_GAME) && (buttons & B_A)); // R
         #else 
