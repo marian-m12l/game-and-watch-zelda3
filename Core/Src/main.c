@@ -536,7 +536,6 @@ static void DrawPpuFrameWithPerf() {
     ingame_overlay = INGAME_OVERLAY_NONE;
   }
   /* PERFORMANCE STUFF */
-#if 0
   float v = (double)1000.0f / (after - before);
   average += v - history[history_pos];
   history[history_pos] = v;
@@ -578,8 +577,6 @@ static void DrawPpuFrameWithPerf() {
   for (uint16_t x = 0; x<=OVERCLOCK; x++) {
     framebuffer[2*320+5+x*2] = 0x07e0;
   }
-#endif
-
 }
 
 
