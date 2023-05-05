@@ -37,6 +37,12 @@ EXTFLASH_ADDRESS ?= $(shell echo "$$(( $(EXTFLASH_OFFSET) + 0x90000000 ))")
 
 LARGE_FLASH ?= 0
 export LARGE_FLASH  # Used in stm32h7x_spiflash.cfg
+ifeq ($(LARGE_FLASH), 0)
+PROGRAM_VERIFY="verify"
+else
+# Currently verify is broken for large chips
+PROGRAM_VERIFY=""
+endif
 
 
 # Screenshot support allocates 150kB of external flash
@@ -489,11 +495,11 @@ $(BUILD_DIR)/$(TARGET)_intflash.bin: $(BUILD_DIR)/$(TARGET).elf | $(BUILD_DIR)
 
 # Programs the internal flash using a new OpenOCD instance
 flash_intflash: $(BUILD_DIR)/$(TARGET)_intflash.bin
-	$(OPENOCD) -f $(OCDIFACE) -c "program $< $(INTFLASH_ADDRESS) verify reset exit"
+	$(OPENOCD) -f $(OCDIFACE) -c "program $< $(INTFLASH_ADDRESS) $(PROGRAM_VERIFY) reset exit"
 .PHONY: flash_intflash
 
 flash_extflash: $(BUILD_DIR)/$(TARGET)_extflash.bin
-	$(OPENOCD) -f $(OCDIFACE) -c "program $< $(EXTFLASH_ADDRESS) verify reset exit"
+	$(OPENOCD) -f $(OCDIFACE) -c "program $< $(EXTFLASH_ADDRESS) $(PROGRAM_VERIFY) reset exit"
 .PHONY: flash_extflash
 
 # Programs both the external and internal flash.
