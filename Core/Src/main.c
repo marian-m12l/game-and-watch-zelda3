@@ -329,6 +329,13 @@ static uint32 renderedFrameCtr = 0;
 #define AUDIO_BUFFER_LENGTH_DMA (2 * AUDIO_BUFFER_LENGTH) // ((2 * AUDIO_SAMPLE_RATE) / FRAMERATE)  // DMA buffer contains 2 frames worth of audio samples in a ring buffer
 
 
+#if ENABLE_SAVESTATE != 0
+// Needs to hold 275465 bytes --> 4KB * 68 = 278528
+uint8_t SAVESTATE_EXTFLASH[4096 * 68]  __attribute__((section (".saveflash"))) __attribute__((aligned(4096)));
+uint8_t savestateBuffer[4096] __attribute__((section (".savestate_buffer")));
+#endif
+
+
 void pcm_submit() {
     int32_t factor = volume_tbl[volume];
     size_t offset = (dma_state == DMA_TRANSFER_STATE_HF) ? 0 : AUDIO_BUFFER_LENGTH;
@@ -607,6 +614,24 @@ static void HandleCommand(uint32 j, bool pressed) {
     g_turbo = pressed;
     return;
   }
+
+
+  #if ENABLE_SAVESTATE != 0
+  // FIXME Support multiple slots?
+  if (j == kKeys_Load) {
+    // Mute
+    for (int i = 0; i < AUDIO_BUFFER_LENGTH_DMA; i++) {
+        audiobuffer_dma[i] = 0;
+    }
+    SaveLoadSlot(kSaveLoad_Load, &SAVESTATE_EXTFLASH);
+  } else if (j == kKeys_Save) {
+    // Mute
+    for (int i = 0; i < AUDIO_BUFFER_LENGTH_DMA; i++) {
+        audiobuffer_dma[i] = 0;
+    }
+    SaveLoadSlot(kSaveLoad_Save, &SAVESTATE_EXTFLASH);
+  }
+  #endif
 }
 
 
@@ -666,6 +691,54 @@ void writeSramImpl(uint8_t* sram) {
 }
 
 
+#if ENABLE_SAVESTATE != 0
+uint16_t bufferCount = 0;
+uint32_t dstPos = 0;
+
+void writeSaveStateInitImpl() {
+  dstPos = 0;
+  bufferCount = 0;
+}
+void writeSaveStateImpl(uint8_t* data, size_t size) {
+  uint32_t srcPos = 0;
+  size_t remaining = size;
+  if (bufferCount > 0) {
+    size_t a = 4096 - bufferCount;
+    size_t b = size;
+    size_t bufferPad = a < b ? a : b;
+    memcpy(savestateBuffer + bufferCount, data, bufferPad);
+    bufferCount += bufferPad;
+    remaining -= bufferPad;
+    srcPos += bufferPad;
+    if (bufferCount == 4096) {
+      store_save(SAVESTATE_EXTFLASH + dstPos, savestateBuffer, 4096);
+      dstPos += 4096;
+      bufferCount = 0;
+    }
+  }
+  while (remaining >= 4096) {
+    store_save(SAVESTATE_EXTFLASH + dstPos, data + srcPos, 4096);
+    dstPos += 4096;
+    srcPos += 4096;
+    remaining -= 4096;
+    wdog_refresh();
+  }
+  if (remaining > 0) {
+    memcpy(savestateBuffer, data + srcPos, remaining);
+    bufferCount += remaining;
+  }
+}
+void writeSaveStateFinalizeImpl() {
+  if (bufferCount > 0) {
+    store_save(SAVESTATE_EXTFLASH + dstPos, savestateBuffer, bufferCount);
+    dstPos += bufferCount;
+    bufferCount = 0;
+  }
+  writeSaveStateInitImpl();
+}
+#endif
+
+
 
 void app_main(void)
 {
@@ -712,21 +785,35 @@ void app_main(void)
 
         // Handle power off / deep sleep
         if (buttons & B_POWER) {
-          if(prompting_to_save){
-            if((HAL_GetTick() - prev_power_ms) > POWER_BUTTON_DELAY_MS){
-              //HAL_SAI_DMAStop(&hsai_BlockA1);
-              GW_EnterDeepSleep();
+          #if ENABLE_SAVESTATE != 0
+          // Save to savestate with power + up
+          // Load savestate with power + down
+          if (buttons & B_Up) {
+            prompting_to_save = false;
+            HandleCommand(kKeys_Save, true);
+          } else if (buttons & B_Down) {
+            prompting_to_save = false;
+            HandleCommand(kKeys_Load, true);
+          } else {
+          #endif
+            if(prompting_to_save){
+              if((HAL_GetTick() - prev_power_ms) > POWER_BUTTON_DELAY_MS){
+                //HAL_SAI_DMAStop(&hsai_BlockA1);
+                GW_EnterDeepSleep();
+              }
             }
+            else{
+              prev_power_ms = HAL_GetTick();
+              prompting_to_save = true;
+              #if GNW_TARGET_ZELDA != 0
+                buttons |= B_TIME;  // Simulate pressing SELECT
+              #else 
+                buttons |= B_GAME | B_TIME;  // Simulate pressing SELECT
+              #endif
+            }
+          #if ENABLE_SAVESTATE != 0
           }
-          else{
-            prev_power_ms = HAL_GetTick();
-            prompting_to_save = true;
-            #if GNW_TARGET_ZELDA != 0
-              buttons |= B_TIME;  // Simulate pressing SELECT
-            #else 
-              buttons |= B_GAME | B_TIME;  // Simulate pressing SELECT
-            #endif
-          }
+          #endif
         }
         else if (buttons){
           // If any button except POWER has been pressed

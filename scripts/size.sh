@@ -51,5 +51,5 @@ print_usage ram      __RAM_LENGTH__
 print_usage ahbram   __AHBRAM_LENGTH__
 print_usage flash    __FLASH_LENGTH__
 print_usage extflash __EXTFLASH_LENGTH__
-#print_usage saveflash __SAVEFLASH_LENGTH__
+print_usage saveflash __SAVEFLASH_LENGTH__
 #print_usage lcd __FBFLASH_LENGTH__

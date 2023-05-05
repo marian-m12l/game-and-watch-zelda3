@@ -52,6 +52,9 @@ RENDER_FPS ?= 0
 
 PATCH_DIALOGUES ?= 0
 
+# Savestate support allocates 178kB of external flash
+ENABLE_SAVESTATE ?= 0
+
 
 # Item switch on L/R. Also allows reordering of items in inventory by pressing Y+direction.
 # Hold X, L, or R inside of the item selection screen to assign items to those buttons.
@@ -322,6 +325,7 @@ C_DEFS =  \
 -DOVERCLOCK=$(OVERCLOCK) \
 -DRENDER_FPS=$(RENDER_FPS) \
 -DFEATURES=$(FEATURES) \
+-DENABLE_SAVESTATE=$(ENABLE_SAVESTATE)
 
 
 # AS includes
@@ -361,6 +365,7 @@ CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
 LDFLAGS += -Wl,--defsym=__EXTFLASH_OFFSET__=$(EXTFLASH_OFFSET)
 LDFLAGS += -Wl,--defsym=__EXTFLASH_TOTAL_LENGTH__=$(EXTFLASH_SIZE)
 LDFLAGS += -Wl,--defsym=ENABLE_SCREENSHOT=$(ENABLE_SCREENSHOT)
+LDFLAGS += -Wl,--defsym=ENABLE_SAVESTATE=$(ENABLE_SAVESTATE)
 
 ifeq ($(INTFLASH_BANK), 1)
 	INTFLASH_ADDRESS = 0x08000000
