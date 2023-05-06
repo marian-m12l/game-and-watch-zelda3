@@ -524,7 +524,7 @@ reset_dbgmcu:
 
 # Starts openocd and attaches to the target. To be used with 'flash_intflash_nc' and 'gdb'
 openocd:
-	$(OPENOCD) -f $(OCDIFACE).cfg -c "init; halt"
+	$(OPENOCD) -f $(OCDIFACE) -c "init; halt"
 .PHONY: openocd
 
 dump_logs: $(BUILD_DIR)/$(TARGET).elf
