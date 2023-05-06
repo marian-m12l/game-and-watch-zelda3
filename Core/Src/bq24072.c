@@ -39,14 +39,13 @@ static volatile uint32_t bq24072_battery_value;
 #endif // BQ24072_PROFILING
 
 static struct {
-    uint16_t    value;
-    bool        charging;
-    bool        power_good;
-    struct {
-        int             percent;
-        bq24072_state_t state;
-    }           last;
+    int    value: 16;
+    int last_percent : 7;
+    int charging : 1;
+    int last_state : 2;
+    int power_good : 1;
 } bq24072_data;
+
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
@@ -133,7 +132,7 @@ int bq24072_get_percent(void)
 
 int bq24072_get_percent_filtered(void)
 {
-    int             percent;
+    uint8_t             percent;
     bq24072_state_t state;
 
     if (bq24072_data.value == 0)
@@ -145,10 +144,10 @@ int bq24072_get_percent_filtered(void)
     state = bq24072_get_state();
     percent = bq24072_get_percent();
 
-    if (state != bq24072_data.last.state)
+    if (state != bq24072_data.last_state)
     {
-        bq24072_data.last.state = state;
-        bq24072_data.last.percent = percent;
+        bq24072_data.last_state = state;
+        bq24072_data.last_percent = percent;
 
         return percent;
     }
@@ -160,20 +159,20 @@ int bq24072_get_percent_filtered(void)
             return percent;
 
         case BQ24072_STATE_CHARGING:
-            if (percent > bq24072_data.last.percent)
+            if (percent > bq24072_data.last_percent)
             {
-                bq24072_data.last.percent = percent;
+                bq24072_data.last_percent = percent;
             }
 
-            return bq24072_data.last.percent;
+            return bq24072_data.last_percent;
 
         case BQ24072_STATE_DISCHARGING:
-            if (percent < bq24072_data.last.percent)
+            if (percent < bq24072_data.last_percent)
             {
-                bq24072_data.last.percent = percent;
+                bq24072_data.last_percent = percent;
             }
 
-            return bq24072_data.last.percent;
+            return bq24072_data.last_percent;
     }
 
     return percent;

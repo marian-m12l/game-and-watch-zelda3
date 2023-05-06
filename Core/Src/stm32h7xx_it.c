@@ -219,10 +219,10 @@ void EXTI2_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI2_IRQn 0 */
 
-  /*if(__HAL_GPIO_EXTI_GET_FLAG(GPIO_PIN_2))
+  if(__HAL_GPIO_EXTI_GET_FLAG(GPIO_PIN_2))
   {
     bq24072_handle_power_good();
-  }*/
+  }
 
   /* USER CODE END EXTI2_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);
@@ -268,10 +268,10 @@ void EXTI9_5_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
 
-  /*if(__HAL_GPIO_EXTI_GET_FLAG(GPIO_PIN_7))
+  if(__HAL_GPIO_EXTI_GET_FLAG(GPIO_PIN_7))
   {
     bq24072_handle_charging();
-  }*/
+  }
 
   /* USER CODE END EXTI9_5_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_7);
