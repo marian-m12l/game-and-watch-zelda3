@@ -7,7 +7,7 @@
 
 #include "utils.h"
 
-#define BQ24072_BATTERY_FULL    13000
+#define BQ24072_BATTERY_FULL    13400
 #define BQ24072_BATTERY_LOWBAT  11000
 
 #define BQ24072_PROFILING   0
@@ -39,11 +39,11 @@ static volatile uint32_t bq24072_battery_value;
 #endif // BQ24072_PROFILING
 
 static struct {
-    int    value: 16;
-    int last_percent : 7;
-    int charging : 1;
-    int last_state : 2;
-    int power_good : 1;
+    int16_t    value: 16;
+    uint16_t last_percent : 7;
+    uint16_t charging : 1;
+    uint16_t last_state : 2;
+    uint16_t power_good : 1;
 } bq24072_data;
 
 
