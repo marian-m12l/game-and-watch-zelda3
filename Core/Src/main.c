@@ -787,7 +787,10 @@ void app_main(void)
         // Update battery level
         #if BATTERY_INDICATOR
         g_battery.level = bq24072_get_percent_filtered();
-        g_battery.is_charging = bq24072_get_state() == BQ24072_STATE_CHARGING;
+        g_battery.is_charging = (
+            (bq24072_get_state() == BQ24072_STATE_CHARGING)
+            || (bq24072_get_state() == BQ24072_STATE_FULL)
+            );
         #endif
         // Check inputs
         uint32_t buttons = buttons_get();
