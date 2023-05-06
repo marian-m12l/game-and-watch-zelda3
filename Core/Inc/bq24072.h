@@ -4,12 +4,13 @@
 
 #include <stdint.h>
 
-typedef enum {
+enum {
     BQ24072_STATE_MISSING,
     BQ24072_STATE_CHARGING,
     BQ24072_STATE_DISCHARGING,
     BQ24072_STATE_FULL,
-} bq24072_state_t;
+};
+typedef uint8_t bq24072_state_t;
 
 int32_t bq24072_init(void);
 

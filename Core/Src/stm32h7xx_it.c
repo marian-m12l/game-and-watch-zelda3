@@ -21,6 +21,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32h7xx_it.h"
+#include "bq24072.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -93,6 +94,7 @@ void common_fault_handler_c(sContextStateFrame *frame, int type)
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern ADC_HandleTypeDef hadc1;
 extern OSPI_HandleTypeDef hospi1;
 extern DMA_HandleTypeDef hdma_sai1_a;
 extern SAI_HandleTypeDef hsai_BlockA1;
@@ -246,6 +248,20 @@ void DMA1_Stream0_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles ADC1 and ADC2 global interrupts.
+  */
+void ADC_IRQHandler(void)
+{
+  /* USER CODE BEGIN ADC_IRQn 0 */
+
+  /* USER CODE END ADC_IRQn 0 */
+  HAL_ADC_IRQHandler(&hadc1);
+  /* USER CODE BEGIN ADC_IRQn 1 */
+
+  /* USER CODE END ADC_IRQn 1 */
+}
+
+/**
   * @brief This function handles EXTI line[9:5] interrupts.
   */
 void EXTI9_5_IRQHandler(void)
@@ -275,7 +291,7 @@ void TIM1_UP_IRQHandler(void)
 
   //uptime_inc();
 
-  //bq24072_poll();
+  bq24072_poll();
 
   /* USER CODE END TIM1_UP_IRQn 0 */
   HAL_TIM_IRQHandler(&htim1);
