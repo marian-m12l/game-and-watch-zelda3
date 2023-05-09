@@ -61,6 +61,8 @@ PATCH_DIALOGUES ?= 0
 # Savestate support allocates 178kB of external flash
 ENABLE_SAVESTATE ?= 0
 
+# Increase UI speed (item menu, etc.)
+FASTER_UI ?= 1
 
 # Item switch on L/R. Also allows reordering of items in inventory by pressing Y+direction.
 # Hold X, L, or R inside of the item selection screen to assign items to those buttons.
@@ -331,7 +333,8 @@ C_DEFS =  \
 -DOVERCLOCK=$(OVERCLOCK) \
 -DRENDER_FPS=$(RENDER_FPS) \
 -DFEATURES=$(FEATURES) \
--DENABLE_SAVESTATE=$(ENABLE_SAVESTATE)
+-DENABLE_SAVESTATE=$(ENABLE_SAVESTATE) \
+-DFASTER_UI=$(FASTER_UI)
 
 
 # AS includes
