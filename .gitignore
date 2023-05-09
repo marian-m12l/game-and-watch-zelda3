@@ -4,3 +4,5 @@ Drivers
 Core/Src/porting/zelda_assets*.c
 scripts/zelda_assets*.dat
 *.srm
+.gdbinit
+*.DS_Store
