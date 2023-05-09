@@ -453,7 +453,7 @@ $(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
 
 assets_extraction: Core/Src/porting/zelda_assets_in_extflash.c Core/Src/porting/zelda_assets_in_intflash.c Core/Src/porting/zelda_assets_in_ram.c
 
-Core/Src/porting/zelda_assets_%.c: zelda3/tables/zelda3_assets.dat | $(BUILD_DIR)
+Core/Src/porting/zelda_assets_%.c: scripts/bundle_all_assets.py scripts/update_all_assets.py zelda3/tables/zelda3_assets.dat | $(BUILD_DIR)
 	python3 ./scripts/bundle_all_assets.py
 	python3 ./scripts/update_all_assets.py
 
