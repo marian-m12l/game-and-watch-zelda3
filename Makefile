@@ -64,6 +64,9 @@ ENABLE_SAVESTATE ?= 0
 # Increase UI speed (item menu, etc.)
 FASTER_UI ?= 1
 
+# Display battery indicator in item menu
+BATTERY_INDICATOR ?= 1
+
 # Item switch on L/R. Also allows reordering of items in inventory by pressing Y+direction.
 # Hold X, L, or R inside of the item selection screen to assign items to those buttons.
 # If X is reassigned, Select opens the map. Push Select while paused to save or quit.
@@ -111,6 +114,16 @@ FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_MISC_BUG_FIXES) << 12 ))"
 FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_CANCEL_BIRD_TRAVEL) << 13 ))")
 FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_GAME_CHANGING_BUG_FIXES) << 14 ))")
 FEATURES := $(shell echo "$$(( $(FEATURES) | $(FEATURE_SWITCH_LR_LIMIT) << 15 ))")
+
+
+# Disables all game customizations altogether
+VANILLA_GAMEPLAY ?= 0
+ifneq ($(VANILLA_GAMEPLAY), 0)
+PATCH_DIALOGUES=0
+FASTER_UI=0
+BATTERY_INDICATOR=0
+FEATURES=0
+endif
 
 
 # Configure Game & Watch target device mario|zelda
@@ -327,7 +340,7 @@ C_DEFS =  \
 -DINTFLASH_BANK=$(INTFLASH_BANK) \
 -DUSE_HAL_DRIVER \
 -DSTM32H7B0xx \
--DBATTERY_INDICATOR=1 \
+-DBATTERY_INDICATOR=$(BATTERY_INDICATOR) \
 -DENABLE_SCREENSHOT=$(ENABLE_SCREENSHOT) \
 -DGNW_TARGET_MARIO=$(GNW_TARGET_MARIO) \
 -DGNW_TARGET_ZELDA=$(GNW_TARGET_ZELDA) \
