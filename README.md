@@ -15,6 +15,7 @@ git clone --recurse-submodules https://github.com/marian-m12l/game-and-watch-zel
 
 - Install python requirements using pip
 ```sh
+pip3 install -r requirements.txt
 pip3 install -r zelda3/requirements.txt
 ```
 
