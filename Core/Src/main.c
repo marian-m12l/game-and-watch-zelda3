@@ -89,8 +89,8 @@ SPI_HandleTypeDef hspi2;
 /* USER CODE BEGIN PV */
 
 
-//char logbuf[1024 * 4] PERSISTENT __attribute__((aligned(4)));
-//uint32_t log_idx PERSISTENT;
+char logbuf[1024 * 4] PERSISTENT __attribute__((aligned(4)));
+uint32_t log_idx PERSISTENT;
 
 /* USER CODE END PV */
 
@@ -187,12 +187,13 @@ __attribute__((optimize("-O0"))) void BSOD(BSOD_t fault, uint32_t pc, uint32_t l
   
   lcd_fill_framebuffer(0x00, 0x00, 0x1f); // Blue
 
-/*
-  lcd_sync();
-  lcd_reset_active_buffer();
-  odroid_display_set_backlight(ODROID_BACKLIGHT_LEVEL6);
 
-  odroid_overlay_draw_text(0, 0, GW_LCD_WIDTH, msg, C_RED, C_BLUE);
+  //lcd_sync();
+  //lcd_reset_active_buffer();
+  //odroid_display_set_backlight(ODROID_BACKLIGHT_LEVEL6);
+  lcd_backlight_set(backlightLevels[6]);
+
+  odroid_overlay_draw_text(framebuffer, 0, 0, GW_LCD_WIDTH, msg, /*C_RED*/0xF800, /*C_BLUE*/0x001F);
 
   // Print each line from the log in reverse
   end = &logbuf[strnlen(logbuf, sizeof(logbuf)) - 1];
@@ -220,14 +221,14 @@ __attribute__((optimize("-O0"))) void BSOD(BSOD_t fault, uint32_t pc, uint32_t l
 
     end = line;
 
-    y += odroid_overlay_draw_text(0, y, GW_LCD_WIDTH, line, C_WHITE, C_BLUE);
+    y += odroid_overlay_draw_text(framebuffer, 0, y, GW_LCD_WIDTH, line, /*C_WHITE*/0xFFFF, /*C_BLUE*/0x001F);
 
     if (line == logbuf) {
       // No more lines to print
       break;
     }
   }
-*/
+
 
   // Wait for a button press (allows a user to hold and release a button when the BSOD occurs)
   uint32_t old_buttons = buttons_get();
@@ -280,7 +281,7 @@ void GW_EnterDeepSleep(void)
 }
 
 
-/*int _write(int file, char *ptr, int len)
+int _write(int file, char *ptr, int len)
 {
   if (log_idx + len + 1 > sizeof(logbuf)) {
     log_idx = 0;
@@ -291,7 +292,7 @@ void GW_EnterDeepSleep(void)
   logbuf[log_idx + 1] = '\0';
 
   return len;
-}*/
+}
 
 
 // Workaround for being able to run with -D_FORTIFY_SOURCE=1
@@ -366,7 +367,8 @@ void NORETURN Die(const char *error) {
 //#if defined(NDEBUG) && defined(_WIN32)
 //  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, kWindowTitle, error, NULL);
 //#endif
-  printf(stderr, "Error: %s\n", error);
+  //printf(stderr, "Error: %s\n", error);
+  printf("Error: %s\n", error);
   //exit(1);
   Error_Handler();
 }
@@ -1781,13 +1783,13 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-  while(1) {
-    // Blink display to indicate failure
-    lcd_backlight_off();
-    HAL_Delay(500);
-    lcd_backlight_on();
-    HAL_Delay(500);
-  }
+
+  uint32_t lr;
+  __ASM volatile(                                \
+      "mov %0, lr \n"                            \
+      : "=r" (lr)                                );
+  BSOD(BSOD_OTHER, 0, lr);
+
   /* USER CODE END Error_Handler_Debug */
 }
 

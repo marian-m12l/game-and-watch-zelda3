@@ -121,3 +121,5 @@ void odroid_system_tick(uint32_t skippedFrame, uint32_t fullFrame, uint32_t busy
 runtime_stats_t odroid_system_get_stats();
 void draw_ingame_overlay(pixel_t *fb, ingame_overlay_t overlay);
 void draw_border(pixel_t * fb);
+
+int  odroid_overlay_draw_text(pixel_t *fb, uint16_t x, uint16_t y, uint16_t width, const char *text, uint16_t color, uint16_t color_bg);
