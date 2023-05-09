@@ -312,7 +312,11 @@ static uint8 g_gamepad_buttons;
 static int g_input1_state;
 static bool g_display_perf;
 static int g_curr_fps;
-static int g_ppu_render_flags = kPpuRenderFlags_NewRenderer;// | kPpuRenderFlags_Height240;
+#if EXTENDED_SCREEN != 0
+static int g_ppu_render_flags = kPpuRenderFlags_NewRenderer | kPpuRenderFlags_Height240;
+#else
+static int g_ppu_render_flags = kPpuRenderFlags_NewRenderer;
+#endif /* EXTENDED_SCREEN */
 static int g_snes_width, g_snes_height;
 //static int g_sdl_audio_mixer_volume = SDL_MIX_MAXVOLUME;
 //static struct RendererFuncs g_renderer_funcs;
@@ -526,8 +530,13 @@ static void LoadAssets() {
 static void DrawPpuFrameWithPerf() {
   /*int render_scale = PpuGetCurrentRenderScale(g_zenv.ppu, g_ppu_render_flags);*/
   wdog_refresh();
-
+  #if EXTENDED_SCREEN == 2
+  uint8 *pixel_buffer = framebuffer;
+  #elif EXTENDED_SCREEN == 1
+  uint8 *pixel_buffer = framebuffer + 32;    // Start 32 pixels from left
+  #else
   uint8 *pixel_buffer = framebuffer + 320*8 + 32;    // Start 8 rows from the top, 32 pixels from left
+  #endif /* EXTENDED_SCREEN */
   int pitch = 320 * 2; // FIXME WIDTH * BPP; // FIXME 0;
 
   //ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags); // FIXME SHOULD DRAW RGB565 !!!
@@ -538,11 +547,13 @@ static void DrawPpuFrameWithPerf() {
   static float history[64], average;
   static int history_pos;
   uint32 before = HAL_GetTick();
-  ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags | RENDER_STEP_FLAGS | ((renderedFrameCtr & 0xf) << 24));
+  ZeldaDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags);
   uint32 after = HAL_GetTick();
 
   // Draw borders
+  #if EXTENDED_SCREEN < 2
   draw_border(framebuffer);
+  #endif /* EXTENDED_SCREEN */
 
   if(after - overlay_start_ms < OVERLAY_DURATION_MS){
     draw_ingame_overlay(framebuffer, ingame_overlay);
@@ -751,6 +762,12 @@ void app_main(void)
     LoadAssets();
     
     ZeldaInitialize();
+
+    #if EXTENDED_SCREEN == 2
+    g_zenv.ppu->extraLeftRight = UintMin(32, kPpuExtraLeftRight);
+    #else
+    g_zenv.ppu->extraLeftRight = 0;
+    #endif /* EXTENDED_SCREEN */
 
     g_wanted_zelda_features = FEATURES;
 

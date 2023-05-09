@@ -67,6 +67,9 @@ FASTER_UI ?= 1
 # Display battery indicator in item menu
 BATTERY_INDICATOR ?= 1
 
+# Extended screensize (0 for default screen size 256x224, 1 for full-height 256x240, 2 for full screen 320x240)
+EXTENDED_SCREEN ?= 1
+
 # Item switch on L/R. Also allows reordering of items in inventory by pressing Y+direction.
 # Hold X, L, or R inside of the item selection screen to assign items to those buttons.
 # If X is reassigned, Select opens the map. Push Select while paused to save or quit.
@@ -123,6 +126,7 @@ PATCH_DIALOGUES=0
 FASTER_UI=0
 BATTERY_INDICATOR=0
 FEATURES=0
+EXTENDED_SCREEN=0
 endif
 
 
@@ -349,7 +353,8 @@ C_DEFS =  \
 -DRENDER_FPS=$(RENDER_FPS) \
 -DFEATURES=$(FEATURES) \
 -DENABLE_SAVESTATE=$(ENABLE_SAVESTATE) \
--DFASTER_UI=$(FASTER_UI)
+-DFASTER_UI=$(FASTER_UI) \
+-DEXTENDED_SCREEN=$(EXTENDED_SCREEN)
 
 
 # AS includes
