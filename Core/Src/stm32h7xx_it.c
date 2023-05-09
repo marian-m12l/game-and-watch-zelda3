@@ -21,6 +21,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32h7xx_it.h"
+#include "bq24072.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -93,6 +94,7 @@ void common_fault_handler_c(sContextStateFrame *frame, int type)
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern ADC_HandleTypeDef hadc1;
 extern OSPI_HandleTypeDef hospi1;
 extern DMA_HandleTypeDef hdma_sai1_a;
 extern SAI_HandleTypeDef hsai_BlockA1;
@@ -217,10 +219,10 @@ void EXTI2_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI2_IRQn 0 */
 
-  /*if(__HAL_GPIO_EXTI_GET_FLAG(GPIO_PIN_2))
+  if(__HAL_GPIO_EXTI_GET_FLAG(GPIO_PIN_2))
   {
     bq24072_handle_power_good();
-  }*/
+  }
 
   /* USER CODE END EXTI2_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);
@@ -246,16 +248,30 @@ void DMA1_Stream0_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles ADC1 and ADC2 global interrupts.
+  */
+void ADC_IRQHandler(void)
+{
+  /* USER CODE BEGIN ADC_IRQn 0 */
+
+  /* USER CODE END ADC_IRQn 0 */
+  HAL_ADC_IRQHandler(&hadc1);
+  /* USER CODE BEGIN ADC_IRQn 1 */
+
+  /* USER CODE END ADC_IRQn 1 */
+}
+
+/**
   * @brief This function handles EXTI line[9:5] interrupts.
   */
 void EXTI9_5_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
 
-  /*if(__HAL_GPIO_EXTI_GET_FLAG(GPIO_PIN_7))
+  if(__HAL_GPIO_EXTI_GET_FLAG(GPIO_PIN_7))
   {
     bq24072_handle_charging();
-  }*/
+  }
 
   /* USER CODE END EXTI9_5_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_7);
@@ -275,7 +291,7 @@ void TIM1_UP_IRQHandler(void)
 
   //uptime_inc();
 
-  //bq24072_poll();
+  bq24072_poll();
 
   /* USER CODE END TIM1_UP_IRQn 0 */
   HAL_TIM_IRQHandler(&htim1);

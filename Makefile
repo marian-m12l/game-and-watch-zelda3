@@ -142,6 +142,7 @@ BUILD_DIR = build
 C_SOURCES =  \
 Core/Src/lcd.c \
 Core/Src/buttons.c \
+Core/Src/bq24072.c \
 Core/Src/main.c \
 Core/Src/gw_flash.c \
 Core/Src/stm32h7xx_it.c \
@@ -326,6 +327,7 @@ C_DEFS =  \
 -DINTFLASH_BANK=$(INTFLASH_BANK) \
 -DUSE_HAL_DRIVER \
 -DSTM32H7B0xx \
+-DBATTERY_INDICATOR=1 \
 -DENABLE_SCREENSHOT=$(ENABLE_SCREENSHOT) \
 -DGNW_TARGET_MARIO=$(GNW_TARGET_MARIO) \
 -DGNW_TARGET_ZELDA=$(GNW_TARGET_ZELDA) \
@@ -525,7 +527,7 @@ reset_dbgmcu:
 
 # Starts openocd and attaches to the target. To be used with 'flash_intflash_nc' and 'gdb'
 openocd:
-	$(OPENOCD) -f $(OCDIFACE).cfg -c "init; halt"
+	$(OPENOCD) -f $(OCDIFACE) -c "init; halt"
 .PHONY: openocd
 
 dump_logs: $(BUILD_DIR)/$(TARGET).elf

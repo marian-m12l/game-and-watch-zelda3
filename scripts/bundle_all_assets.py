@@ -11,7 +11,7 @@ assets_location = [
         #65,                     # Dialogue text                 (36362 B)
         (66,    'ram'),          # Sprites graphics              (133481 B)
         (67,    'ram'),          # Backgrounds graphics          (119901 B)
-        (68,    'ram'),          # Overworld Map graphics        (16384 B)
+        (68,    'intflash'),          # Overworld Map graphics        (16384 B)
         (69,    'intflash'),     # Light Overworld Tilemap       (4096 B)
         (70,    'intflash'),     # Dark Overworld Tilemap        (1024 B)
         (71,    'intflash'),     # Prodefined Tile Data          (12876 B)
