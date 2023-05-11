@@ -528,6 +528,10 @@ static void LoadAssets() {
 
 }
 
+MemBlk FindInAssetArray(int asset, int idx) {
+  return FindIndexInMemblk((MemBlk) { g_asset_ptrs[asset], g_asset_sizes[asset] }, idx);
+}
+
 
 static void DrawPpuFrameWithPerf() {
   /*int render_scale = PpuGetCurrentRenderScale(g_zenv.ppu, g_ppu_render_flags);*/
@@ -774,6 +778,7 @@ void app_main(void)
     g_wanted_zelda_features = FEATURES;
 
     ZeldaEnableMsu(false);
+    ZeldaSetLanguage(NULL);
     
     ZeldaReadSram();
 

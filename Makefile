@@ -476,17 +476,18 @@ Core/Src/porting/zelda_assets_%.c: scripts/bundle_all_assets.py scripts/update_a
 	python3 ./scripts/update_all_assets.py
 
 
-zelda3/tables/dialogue.txt: zelda3/tables/zelda3.sfc zelda3/tables/dialogue.txt.patched
-zelda3/tables/dialogue.txt.patched: scripts/dialogue.txt.diff
-	cd zelda3 && make tables/dialogue.txt
-	if [ $(PATCH_DIALOGUES) -gt 0 ]; then \
-		echo 'Patching dialogues file'; \
-		if [ -e $@ ]; then patch -R zelda3/tables/dialogue.txt $@; fi; \
-		patch zelda3/tables/dialogue.txt $<; \
-		cp scripts/dialogue.txt.diff $@; \
-	fi
+# FIXME Handle patching dialogue.txt in restool.py?
+#zelda3/tables/dialogue.txt: zelda3/tables/zelda3.sfc zelda3/tables/dialogue.txt.patched
+#zelda3/tables/dialogue.txt.patched: scripts/dialogue.txt.diff
+#	cd zelda3 && make tables/dialogue.txt
+#	if [ $(PATCH_DIALOGUES) -gt 0 ]; then \
+#		echo 'Patching dialogues file'; \
+#		if [ -e $@ ]; then patch -R zelda3/tables/dialogue.txt $@; fi; \
+#		patch zelda3/tables/dialogue.txt $<; \
+#		cp scripts/dialogue.txt.diff $@; \
+#	fi
 
-zelda3/tables/zelda3_assets.dat: zelda3/tables/zelda3.sfc zelda3/tables/dialogue.txt | $(BUILD_DIR)
+zelda3/tables/zelda3_assets.dat: zelda3/tables/zelda3.sfc | $(BUILD_DIR)
 	cd zelda3 && make tables/zelda3_assets.dat
 	
 $(BUILD_DIR):
