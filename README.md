@@ -21,10 +21,11 @@ pip3 install -r zelda3/requirements.txt
 
 - Place your US ROM file named `zelda3.sfc` in `zelda3/tables`.
 
+- Optionally, place your localized ROM file `zelda3_<lang>.sfc` in `zelda3/tables` (e.g. `zelda3_fr.sfc`).
 
-- Compile and flash (e.g. on internal flash bank 2, leaving 1MB (out of 16) for stock firmware at the beginning of extflash)
+- Compile and flash (e.g. on internal flash bank 2, leaving 1MB (out of 16) for stock firmware at the beginning of extflash, french language)
 ```sh
-make INTFLASH_BANK=2 EXTFLASH_SIZE_MB=15 EXTFLASH_OFFSET=1048576 ADAPTER=jlink OPENOCD=/path/to/patched/openocd-git/bin/openocd GNW_TARGET=mario flash
+make INTFLASH_BANK=2 EXTFLASH_SIZE_MB=15 EXTFLASH_OFFSET=1048576 ADAPTER=jlink OPENOCD=/path/to/patched/openocd-git/bin/openocd GNW_TARGET=mario LANGUAGE=fr flash
 ```
 
 # Backing up and restoring saves

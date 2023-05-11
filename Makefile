@@ -130,6 +130,17 @@ EXTENDED_SCREEN=0
 endif
 
 
+# Language
+LANGUAGE ?= us
+ifeq ($(LANGUAGE), us)
+LOCALIZED_ROM=
+LOCALIZED_ROM_PATH=
+else
+LOCALIZED_ROM=zelda3_$(LANGUAGE).sfc
+LOCALIZED_ROM_PATH=zelda3/tables/$(LOCALIZED_ROM)
+endif
+
+
 # Configure Game & Watch target device mario|zelda
 GNW_TARGET ?= mario
 
@@ -319,6 +330,7 @@ endif
 HEX = $(CP) -O ihex
 BIN = $(CP) -O binary -S
 ECHO  = echo
+PYTHON:=/usr/bin/env python3
  
 #######################################
 # CFLAGS
@@ -354,7 +366,8 @@ C_DEFS =  \
 -DFEATURES=$(FEATURES) \
 -DENABLE_SAVESTATE=$(ENABLE_SAVESTATE) \
 -DFASTER_UI=$(FASTER_UI) \
--DEXTENDED_SCREEN=$(EXTENDED_SCREEN)
+-DEXTENDED_SCREEN=$(EXTENDED_SCREEN) \
+-DDIALOGUES_LANGUAGE=$(LANGUAGE)
 
 
 # AS includes
@@ -472,8 +485,8 @@ $(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
 assets_extraction: Core/Src/porting/zelda_assets_in_extflash.c Core/Src/porting/zelda_assets_in_intflash.c Core/Src/porting/zelda_assets_in_ram.c
 
 Core/Src/porting/zelda_assets_%.c: scripts/bundle_all_assets.py scripts/update_all_assets.py zelda3/tables/zelda3_assets.dat | $(BUILD_DIR)
-	python3 ./scripts/bundle_all_assets.py
-	python3 ./scripts/update_all_assets.py
+	$(PYTHON) ./scripts/bundle_all_assets.py
+	$(PYTHON) ./scripts/update_all_assets.py
 
 
 # FIXME Handle patching dialogue.txt in restool.py?
@@ -487,8 +500,17 @@ Core/Src/porting/zelda_assets_%.c: scripts/bundle_all_assets.py scripts/update_a
 #		cp scripts/dialogue.txt.diff $@; \
 #	fi
 
-zelda3/tables/zelda3_assets.dat: zelda3/tables/zelda3.sfc | $(BUILD_DIR)
-	cd zelda3 && make tables/zelda3_assets.dat
+zelda3/tables/zelda3_assets.dat: zelda3/tables/zelda3.sfc $(LOCALIZED_ROM_PATH) | $(BUILD_DIR)
+	@if [ "$(LOCALIZED_ROM)" ]; then \
+		$(ECHO) 'Extracting dialogues from localized ROM: $(LOCALIZED_ROM)'; \
+		cd zelda3/tables; \
+		$(PYTHON) restool.py --extract-dialogue -r $(LOCALIZED_ROM); \
+		$(ECHO) "Extracting game resources with localized dialogues"; \
+		$(PYTHON) restool.py --extract-from-rom --languages=$(LANGUAGE) -r zelda3.sfc; \
+	else \
+		$(ECHO) "Extracting game resources"; \
+		cd zelda3/tables; $(PYTHON) restool.py --extract-from-rom -r zelda3.sfc; \
+	fi
 	
 $(BUILD_DIR):
 	mkdir $@		

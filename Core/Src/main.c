@@ -60,6 +60,9 @@
 #define GNW_TARGET_ZELDA 0
 #endif /* GNW_TARGET_ZELDA */
 
+#define STRINGIZE(x) #x
+#define STRINGIZE_VALUE_OF(x) STRINGIZE(x)
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -778,7 +781,7 @@ void app_main(void)
     g_wanted_zelda_features = FEATURES;
 
     ZeldaEnableMsu(false);
-    ZeldaSetLanguage(NULL);
+    ZeldaSetLanguage(STRINGIZE_VALUE_OF(DIALOGUES_LANGUAGE));
     
     ZeldaReadSram();
 
