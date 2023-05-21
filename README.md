@@ -6,6 +6,8 @@ All credits for reverse engineering goes to https://github.com/snesrev/zelda3
 
 Minimum flash size of 2MB (the game uses around 1.5MB of extflash).
 
+GCC >= 12
+
 # Build instructions
 
 - Clone repository with submodules
