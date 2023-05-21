@@ -4,14 +4,15 @@
 
 if [[ $# -lt 1 ]]; then
     echo "Usage: $(basename $0) <currently_running_binary.elf>"
-    echo "This will erase zelda save from the device"
+    echo "This will erase zelda savestate from the device"
     exit 1
 fi
 
 ELF="$1"
 
 address=$(get_symbol __SAVEFLASH_START__)
-size=8192
+address=$(($address + 8192))
+size=$((4096*68))
 
 DUMMY_FILE=$(mktemp /tmp/retro_go_dummy.XXXXXX)
 if [[ ! -e "${DUMMY_FILE}" ]]; then
@@ -33,6 +34,6 @@ rm -f "${DUMMY_FILE}"
 
 echo ""
 echo ""
-echo "Save has been erased."
+echo "Savestate has been erased."
 echo ""
 echo ""
