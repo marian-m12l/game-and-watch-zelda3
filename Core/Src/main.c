@@ -883,12 +883,13 @@ void app_main(void)
         #endif /* GNW_TARGET_ZELDA */
             
         #if ENABLE_SAVESTATE != 0
-        // Save to savestate with power + up
-        // Load savestate with power + down
+        // Save to savestate with Game + A
+        // Load savestate with Game + B
         if ((buttons & B_GAME) && (buttons & B_A)) {
           HandleCommand(kKeys_Save, true);
         } else if ((buttons & B_GAME) && (buttons & B_B)) {
           HandleCommand(kKeys_Load, true);
+        }
         #endif
 
 
