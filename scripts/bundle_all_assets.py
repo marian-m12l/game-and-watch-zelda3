@@ -5,7 +5,7 @@ assets_location = [
         #1,                      # Sound Bank Indoor             (12756 B)
         #2,                      # Sound Bank Ending             (8354 B)
         (57,    'intflash'),     # Link graphics                 (28672 B)
-        (58,    'intflash'),     # Dungeon Sprites               (4965 B)
+        (58,    'ram'),          # Dungeon Sprites               (4965 B)
         (59,    'intflash'),     # Dungeon Sprite Offset         (640 B)
         (64,    'ram'),          # Sprites graphics              (133481 B)
         (65,    'ram'),          # Backgrounds graphics          (119901 B)
