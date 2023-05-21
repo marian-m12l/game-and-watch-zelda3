@@ -825,16 +825,10 @@ void app_main(void)
         // Handle power off / deep sleep
         if (buttons & B_POWER) {
           #if ENABLE_SAVESTATE != 0
-          // Save to savestate with power + up
-          // Load savestate with power + down
-          if (buttons & B_Up) {
-            prompting_to_save = false;
+            // Auto save state on power off
             HandleCommand(kKeys_Save, true);
-          } else if (buttons & B_Down) {
-            prompting_to_save = false;
-            HandleCommand(kKeys_Load, true);
-          } else {
-          #endif
+            GW_EnterDeepSleep();
+          #else
             if(prompting_to_save){
               if((HAL_GetTick() - prev_power_ms) > POWER_BUTTON_DELAY_MS){
                 //HAL_SAI_DMAStop(&hsai_BlockA1);
@@ -850,8 +844,6 @@ void app_main(void)
                 buttons |= B_GAME | B_TIME;  // Simulate pressing SELECT
               #endif
             }
-          #if ENABLE_SAVESTATE != 0
-          }
           #endif
         }
         else if (buttons){
@@ -859,39 +851,46 @@ void app_main(void)
           prompting_to_save = false;
         }
 
-        #if GNW_TARGET_ZELDA != 0
-            HandleCommand(1, !(buttons & B_GAME) && (buttons & B_Up));
-            HandleCommand(2, !(buttons & B_GAME) && (buttons & B_Down));
-            HandleCommand(3, !(buttons & B_GAME) && (buttons & B_Left));
-            HandleCommand(4, !(buttons & B_GAME) && (buttons & B_Right));
 
-            HandleCommand(7, !(buttons & B_GAME) && (buttons & B_A));  // A (Pegasus Boots/Interacting)
-            HandleCommand(8, !(buttons & B_GAME) && (buttons & B_B));  // B (Sword)
-            
+        HandleCommand(1, !(buttons & B_GAME) && (buttons & B_Up));
+        HandleCommand(2, !(buttons & B_GAME) && (buttons & B_Down));
+        HandleCommand(3, !(buttons & B_GAME) && (buttons & B_Left));
+        HandleCommand(4, !(buttons & B_GAME) && (buttons & B_Right));
+
+        HandleCommand(7, !(buttons & B_GAME) && (buttons & B_A));  // A (Pegasus Boots/Interacting)
+        HandleCommand(8, !(buttons & B_GAME) && (buttons & B_B));  // B (Sword)
+
+        #if GNW_TARGET_ZELDA != 0
             HandleCommand(9, (buttons & B_PAUSE));    // X (Show Map)
-            HandleCommand(10, (buttons & B_SELECT));  // Y (Use Item)
+            HandleCommand(10, !(buttons & B_GAME) && (buttons & B_SELECT));  // Y (Use Item)
             
             HandleCommand(5, (buttons & B_TIME));   // Select (Save Screen)
-            HandleCommand(6, (buttons & B_START));  // Start (Item Selection Screen)
+            HandleCommand(6, !(buttons & B_GAME) && (buttons & B_START));  // Start (Item Selection Screen)
             
             // L & R aren't used in Zelda3, but we could enable item quick-swapping.
-            HandleCommand(11, (buttons & B_GAME) && (buttons & B_B)); // L
-            HandleCommand(12, (buttons & B_GAME) && (buttons & B_A)); // R
+            HandleCommand(11, (buttons & B_GAME) && (buttons & B_SELECT)); // L
+            HandleCommand(12, (buttons & B_GAME) && (buttons & B_START)); // R
         #else 
-            HandleCommand(1, !(buttons & B_GAME) && (buttons & B_Up));
-            HandleCommand(2, !(buttons & B_GAME) && (buttons & B_Down));
-            HandleCommand(3, !(buttons & B_GAME) && (buttons & B_Left));
-            HandleCommand(4, !(buttons & B_GAME) && (buttons & B_Right));
-            HandleCommand(7, !(buttons & B_GAME) && (buttons & B_A));
-            HandleCommand(8, !(buttons & B_GAME) && (buttons & B_B));
             HandleCommand(9, !(buttons & B_GAME) && (buttons & B_TIME));    // X
             HandleCommand(10, !(buttons & B_GAME) && (buttons & B_PAUSE));  // Y
             
             HandleCommand(5, (buttons & B_GAME) && (buttons & B_TIME));   // Select
             HandleCommand(6, (buttons & B_GAME) && (buttons & B_PAUSE));  // Start
-            HandleCommand(11, (buttons & B_GAME) && (buttons & B_B)); // L
-            HandleCommand(12, (buttons & B_GAME) && (buttons & B_A)); // R
+
+            // No button combinations available for L/R on Mario units...
+            //HandleCommand(11, (buttons & B_GAME) && (buttons & B_B)); // L
+            //HandleCommand(12, (buttons & B_GAME) && (buttons & B_A)); // R
         #endif /* GNW_TARGET_ZELDA */
+            
+        #if ENABLE_SAVESTATE != 0
+        // Save to savestate with power + up
+        // Load savestate with power + down
+        if ((buttons & B_GAME) && (buttons & B_A)) {
+          HandleCommand(kKeys_Save, true);
+        } else if ((buttons & B_GAME) && (buttons & B_B)) {
+          HandleCommand(kKeys_Load, true);
+        #endif
+
 
         #define B_MACRO_CHECK(x, y) ((buttons & x) && (buttons & y) && prev_buttons != buttons)
         
