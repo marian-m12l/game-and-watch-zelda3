@@ -173,6 +173,7 @@ Core/Src/buttons.c \
 Core/Src/bq24072.c \
 Core/Src/main.c \
 Core/Src/gw_flash.c \
+Core/Src/crc32.c \
 Core/Src/stm32h7xx_it.c \
 Core/Src/stm32h7xx_hal_msp.c \
 Core/Src/system_stm32h7xx.c \

@@ -14,8 +14,71 @@ uint16_t framebuffer_capture[GW_LCD_WIDTH * GW_LCD_HEIGHT]  __attribute__((secti
 #endif
 
 const uint8_t backlightLevels[] = {128, 130, 133, 139, 149, 162, 178, 198, 222, 255};
-uint8_t volume = 4;// FIXME Load default volume from config in extflash ?
-uint8_t brightness = 7;// FIXME Load default volume from config in extflash ?
+
+
+__attribute__((section (".configflash"))) __attribute__((aligned(4096))) persistent_config_t persistent_config_flash;
+persistent_config_t persistent_config_ram;
+
+void settings_init()
+{
+    memcpy(&persistent_config_ram, &persistent_config_flash, sizeof(persistent_config_t));
+
+    if (persistent_config_ram.magic != CONFIG_MAGIC) {
+        printf("Config: Magic mismatch. Expected 0x%08x, got 0x%08lx\n", CONFIG_MAGIC, persistent_config_ram.magic);
+        settings_reset();
+        return;
+    }
+
+    if (persistent_config_ram.version != persistent_config_default.version) {
+        printf("Config: New config version, resetting settings.\n");
+        settings_reset();
+        return;
+    }
+
+    // Calculate crc32 of the whole struct with the crc32 value set to 0
+    persistent_config_ram.crc32 = 0;
+    persistent_config_ram.crc32 = crc32_le(0, (unsigned char *) &persistent_config_ram, sizeof(persistent_config_t));
+
+    if (persistent_config_ram.crc32 != persistent_config_flash.crc32) {
+        printf("Config: CRC32 mismatch. Expected 0x%08lx, got 0x%08lx\n", persistent_config_ram.crc32, persistent_config_flash.crc32);
+        settings_reset();
+        return;
+    }
+}
+
+void settings_commit()
+{
+    // Calculate crc32 of the whole struct with the crc32 value set to 0
+    persistent_config_ram.crc32 = 0;
+    persistent_config_ram.crc32 = crc32_le(0, (unsigned char *) &persistent_config_ram, sizeof(persistent_config_t));
+
+    store_save((const uint8_t *) &persistent_config_flash, (const uint8_t *) &persistent_config_ram, sizeof(persistent_config_t));
+}
+
+void settings_reset()
+{
+    memcpy(&persistent_config_ram, &persistent_config_default, sizeof(persistent_config_t));
+}
+
+uint8_t settings_Volume_get()
+{
+    return persistent_config_ram.volume;
+}
+void settings_Volume_set(uint8_t value)
+{
+    persistent_config_ram.volume = value;
+}
+
+uint8_t settings_Backlight_get()
+{
+    return persistent_config_ram.backlight;
+}
+void settings_Backlight_set(uint8_t value)
+{
+    persistent_config_ram.backlight = value;
+}
+
+
 
 #define OVERLAY_COLOR_565 0xFFFF
 #define BORDER_COLOR_565 0x1082  // Dark Dark Gray
@@ -348,6 +411,7 @@ void draw_ingame_overlay(pixel_t *fb, ingame_overlay_t overlay){
                     INGAME_OVERLAY_Y + INGAME_OVERLAY_BARS_H);
             draw_img(fb, IMG_SPEAKER, INGAME_OVERLAY_BARS_IMG_X, INGAME_OVERLAY_BARS_IMG_Y);
 
+            uint8_t volume = settings_Volume_get();
             for(int8_t i=AUDIO_VOLUME_MAX; i > 0; i--){
                 if(i <= volume)
                     draw_rectangle(fb,
@@ -375,6 +439,7 @@ void draw_ingame_overlay(pixel_t *fb, ingame_overlay_t overlay){
                     INGAME_OVERLAY_Y + INGAME_OVERLAY_BARS_H);
             draw_img(fb, IMG_SUN, INGAME_OVERLAY_BARS_IMG_X, INGAME_OVERLAY_BARS_IMG_Y);
 
+            uint8_t brightness = settings_Backlight_get();
             for(int8_t i=BRIGHTNESS_MAX; i > 0; i--){
                 if(i <= brightness)
                     draw_rectangle(fb,

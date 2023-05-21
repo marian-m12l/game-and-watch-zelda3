@@ -100,8 +100,42 @@ typedef uint16_t pixel_t;
 extern common_emu_state_t common_emu_state;
 
 extern const uint8_t backlightLevels[];
-extern uint8_t volume;
-extern uint8_t brightness;
+
+
+#define CONFIG_MAGIC 0xcafef00d
+
+typedef struct persistent_config {
+    uint32_t magic;
+    uint8_t version;
+
+    uint8_t backlight;
+    uint8_t volume;
+
+    uint32_t crc32;
+} persistent_config_t;
+
+static const persistent_config_t persistent_config_default = {
+    .magic = CONFIG_MAGIC,
+    .version = 1,
+
+    .backlight = 6,
+    .volume = AUDIO_VOLUME_MAX / 2, // Too high volume can cause brown out if the battery isn't connected.
+};
+
+extern persistent_config_t persistent_config_flash;
+extern persistent_config_t persistent_config_ram;
+
+void settings_init(void);
+void settings_reset(void);
+void settings_commit(void);
+
+uint8_t settings_Volume_get();
+void settings_Volume_set(uint8_t value);
+
+uint8_t settings_Backlight_get();
+void settings_Backlight_set(uint8_t value);
+
+
 
 #define BRIGHTNESS_MIN 1
 #define BRIGHTNESS_MAX 9

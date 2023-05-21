@@ -349,6 +349,7 @@ uint8_t savestateBuffer[4096] __attribute__((section (".savestate_buffer")));
 
 
 void pcm_submit() {
+    uint8_t volume = settings_Volume_get();
     int32_t factor = volume_tbl[volume];
     size_t offset = (dma_state == DMA_TRANSFER_STATE_HF) ? 0 : AUDIO_BUFFER_LENGTH;
 
@@ -568,7 +569,10 @@ static void DrawPpuFrameWithPerf() {
     draw_ingame_overlay(framebuffer, ingame_overlay);
   }
   else{
-    ingame_overlay = INGAME_OVERLAY_NONE;
+    if (ingame_overlay != INGAME_OVERLAY_NONE) {
+      ingame_overlay = INGAME_OVERLAY_NONE;
+      settings_commit();
+    }
   }
   /* PERFORMANCE STUFF */
   float v = (double)1000.0f / (after - before);
@@ -594,11 +598,13 @@ static void DrawPpuFrameWithPerf() {
   }
 
   // Render audio volume
+  uint8_t volume = settings_Volume_get();
   for (uint8_t y = 1; y<=AUDIO_VOLUME_MAX; y++) {
     framebuffer[y*2*320+305] = (y <= volume ? 0x07e0 : 0x7bef);
   }
 
   // Render brightness level
+  uint8_t brightness = settings_Backlight_get();
   for (uint8_t y = 1; y<=BRIGHTNESS_MAX; y++) {
     framebuffer[y*2*320+310] = (y <= brightness ? 0x07e0 : 0x7bef);
   }
@@ -798,6 +804,11 @@ void app_main(void)
 
     common_emu_state.frame_time_10us = (uint16_t)(100000 / FRAMERATE + 0.5f);
 
+    settings_init();
+    
+    uint8_t brightness = settings_Backlight_get();
+    lcd_backlight_set(backlightLevels[brightness]);
+
     uint32_t prev_buttons = 0;
     uint32_t prev_power_ms = 0;
     bool prompting_to_save = false;
@@ -896,30 +907,34 @@ void app_main(void)
         #define B_MACRO_CHECK(x, y) ((buttons & x) && (buttons & y) && prev_buttons != buttons)
         
         if (B_MACRO_CHECK(B_GAME, B_Left)){
+          uint8_t volume = settings_Volume_get();
           if (volume > AUDIO_VOLUME_MIN) {
-            volume--;
+            settings_Volume_set(--volume);
           }
           ingame_overlay = INGAME_OVERLAY_VOLUME;
           overlay_start_ms = HAL_GetTick();
         }
         if (B_MACRO_CHECK(B_GAME, B_Right)){
+          uint8_t volume = settings_Volume_get();
           if (volume < AUDIO_VOLUME_MAX) {
-            volume++;
+            settings_Volume_set(++volume);
           }
           ingame_overlay = INGAME_OVERLAY_VOLUME;
           overlay_start_ms = HAL_GetTick();
         }
         if (B_MACRO_CHECK(B_GAME, B_Down)){
+          uint8_t brightness = settings_Backlight_get();
           if (brightness > BRIGHTNESS_MIN) {
-            brightness--;
+            settings_Backlight_set(--brightness);
             lcd_backlight_set(backlightLevels[brightness]);
           }
           ingame_overlay = INGAME_OVERLAY_BRIGHTNESS;
           overlay_start_ms = HAL_GetTick();
         }
         if (B_MACRO_CHECK(B_GAME, B_Up)){
+          uint8_t brightness = settings_Backlight_get();
           if (brightness < BRIGHTNESS_MAX) {
-            brightness++;
+            settings_Backlight_set(++brightness);
             lcd_backlight_set(backlightLevels[brightness]);
           }
           ingame_overlay = INGAME_OVERLAY_BRIGHTNESS;
@@ -1060,7 +1075,7 @@ int main(void)
 
   lcd_init(&hspi2, &hltdc);
   lcd_fill_framebuffer(0x00, 0x00, 0x00);
-  lcd_backlight_set(backlightLevels[brightness]);
+  lcd_backlight_set(backlightLevels[6]);
 
   // Copy instructions and data from extflash to axiram
   static uint32_t copy_areas[4] __attribute__((used));
