@@ -44,6 +44,7 @@ else
 PROGRAM_VERIFY=""
 endif
 
+export USE_4K_ERASE_CMD=0	# Used in stm32h7x_spiflash.cfg
 
 # Screenshot support allocates 150kB of external flash
 ENABLE_SCREENSHOT ?= 0

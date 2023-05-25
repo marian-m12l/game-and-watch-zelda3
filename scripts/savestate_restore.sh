@@ -31,6 +31,7 @@ if [[ -e "$image" ]]; then
     echo "    save_size=$size"
     echo ""
     echo ""
+    export USE_4K_ERASE_CMD=1   # Used in stm32h7x_spiflash.cfg
 	${OPENOCD} -f scripts/interface_${ADAPTER}.cfg -c "program ${image} ${address} verify reset exit"
 else
     echo ""

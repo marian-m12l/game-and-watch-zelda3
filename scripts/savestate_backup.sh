@@ -30,7 +30,9 @@ echo ""
 # openocd does not handle [ and ] well in filenames.
 image_quoted=${OUTFILE//\[/\\[}
 image_quoted=${image_quoted//\]/\\]}
-${OPENOCD} -f scripts/interface_${ADAPTER}.cfg -c "init; halt; dump_image \"${image_quoted}\" ${address} ${size}; resume; exit;"
+
+export USE_4K_ERASE_CMD=0   # Used in stm32h7x_spiflash.cfg
+${OPENOCD} -f scripts/interface_${ADAPTER}.cfg -c "init; reset halt; dump_image \"${image_quoted}\" ${address} ${size}; resume; exit;"
 
 # Reset the device and disable clocks from running when device is suspended
 reset_and_disable_debug

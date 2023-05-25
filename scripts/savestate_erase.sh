@@ -14,6 +14,10 @@ address=$(get_symbol __SAVEFLASH_START__)
 address=$(($address + 8192))
 size=$((4096*68))
 
+echo "Erasing savestate data:"
+printf "    save_address=0x%08x\n" $address
+echo "    save_size=$size"
+
 DUMMY_FILE=$(mktemp /tmp/retro_go_dummy.XXXXXX)
 if [[ ! -e "${DUMMY_FILE}" ]]; then
     echo "Can't create tempfile!"
@@ -24,6 +28,7 @@ fi
 /usr/bin/env python3 -c "with open('${DUMMY_FILE}', 'wb') as f: f.write(b'\xFF'*${size})"
 
 # Flash it to the saveflash_start
+export USE_4K_ERASE_CMD=1   # Used in stm32h7x_spiflash.cfg
 ${OPENOCD} -f scripts/interface_${ADAPTER}.cfg -c "program ${DUMMY_FILE} ${address} verify reset exit"
 
 # Reset the device and disable clocks from running when device is suspended
