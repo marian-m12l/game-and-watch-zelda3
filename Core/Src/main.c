@@ -836,8 +836,11 @@ void app_main(void)
         // Handle power off / deep sleep
         if (buttons & B_POWER) {
           #if ENABLE_SAVESTATE != 0
-            // Auto save state on power off
-            HandleCommand(kKeys_Save, true);
+            // Disable auto-save-on-power-off if PAUSE/SET is pressed
+            if (!(buttons & B_PAUSE)) {
+              // Auto save state on power off
+              HandleCommand(kKeys_Save, true);
+            }
             GW_EnterDeepSleep();
           #else
             if(prompting_to_save){
