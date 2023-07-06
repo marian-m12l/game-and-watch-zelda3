@@ -147,8 +147,8 @@ SECTIONS
     build/ppu.o (.text .text*)
     build/zelda_rtl.o (.text .text*)
 
-    __itcram_hot_end__ = .;
     . = ALIGN(4);
+    __itcram_hot_end__ = .;
 
     __itcram_end__ = .;
   } >ITCMRAM AT> EXTFLASH
@@ -160,6 +160,8 @@ SECTIONS
   ._dtcram_hot :
   {
     __dtcram_start__ = .;
+    
+    . = ALIGN(4);
     __dtcram_hot_start__ = .;
     
     build/dma.o (.rodata .rodata*)
@@ -172,6 +174,7 @@ SECTIONS
     build/sprite_main.o (.rodata .rodata*)
     build/zelda_rtl.o (.rodata .rodata*)
 
+    . = ALIGN(4);
     __dtcram_hot_end__ = .;
   } >DTCMRAM AT> EXTFLASH
   
@@ -198,6 +201,7 @@ SECTIONS
   {
     __ahbram_start__ = .;
 
+    . = ALIGN(4);
     __ahbram_hot_start__ = .;
 
     build/ancilla.o (.text .text* .rodata .rodata*)
@@ -207,6 +211,7 @@ SECTIONS
     build/tagalong.o (.text .text* .rodata .rodata*)
     build/tile_detect.o (.text .text* .rodata .rodata*)
 
+    . = ALIGN(4);
     __ahbram_hot_end__ = .;
     
     __ahbram_end__ = .;
@@ -232,8 +237,8 @@ SECTIONS
     
     build/zelda_assets_in_ram.o (.text .text* .rodata .rodata*)
 
-    __ram_exec_end__ = .;
     . = ALIGN(4);
+    __ram_exec_end__ = .;
     
   } >RAM AT> EXTFLASH
 
