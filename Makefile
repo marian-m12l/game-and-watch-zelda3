@@ -542,16 +542,19 @@ $(BUILD_DIR)/$(TARGET)_intflash.bin: $(BUILD_DIR)/$(TARGET).elf | $(BUILD_DIR)
 
 
 # Programs the internal flash using a new OpenOCD instance
-flash_intflash: $(BUILD_DIR)/$(TARGET)_intflash.bin | flash_extflash
-	$(OPENOCD) -f $(OCDIFACE) -c "init; halt; program $< $(INTFLASH_ADDRESS) $(PROGRAM_VERIFY); reset; exit"
+flash_intflash: $(BUILD_DIR)/$(TARGET)_intflash.bin
+	$(OPENOCD) -f $(OCDIFACE) -c "init; halt; program $< $(INTFLASH_ADDRESS) $(PROGRAM_VERIFY); exit"
 .PHONY: flash_intflash
 
 flash_extflash: $(BUILD_DIR)/$(TARGET)_extflash.bin
-	$(OPENOCD) -f $(OCDIFACE) -c "init; halt; program $< $(EXTFLASH_ADDRESS) $(PROGRAM_VERIFY); reset; exit"
+	$(OPENOCD) -f $(OCDIFACE) -c "init; halt; program $< $(EXTFLASH_ADDRESS) $(PROGRAM_VERIFY); exit"
 .PHONY: flash_extflash
 
 # Programs both the external and internal flash.
-flash: flash_extflash flash_intflash reset_dbgmcu
+flash:
+	$(V)$(MAKE) flash_extflash
+	$(V)$(MAKE) flash_intflash
+	$(V)$(MAKE) reset_dbgmcu 
 .PHONY: flash
 
 
@@ -559,7 +562,7 @@ reset:
 	$(OPENOCD) -f $(OCDIFACE) -c "init; reset; exit"
 .PHONY: reset
 
-reset_dbgmcu: | flash_extflash flash_intflash
+reset_dbgmcu:
 	# Reset the DBGMCU configuration register (DBGMCU_CR)
 	$(V)$(OPENOCD) -f ${OCDIFACE} -c "init; reset halt; mww 0x5C001004 0x00000000; resume; exit;"
 .PHONY: reset_dbgmcu
