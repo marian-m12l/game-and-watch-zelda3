@@ -132,12 +132,12 @@ endif
 
 
 # Language
-LANGUAGE ?= us
-ifeq ($(LANGUAGE), us)
+DIALOGUES_LANGUAGE ?= us
+ifeq ($(DIALOGUES_LANGUAGE), us)
 LOCALIZED_ROM=
 LOCALIZED_ROM_PATH=
 else
-LOCALIZED_ROM=zelda3_$(LANGUAGE).sfc
+LOCALIZED_ROM=zelda3_$(DIALOGUES_LANGUAGE).sfc
 LOCALIZED_ROM_PATH=zelda3/tables/$(LOCALIZED_ROM)
 endif
 
@@ -369,7 +369,7 @@ C_DEFS =  \
 -DENABLE_SAVESTATE=$(ENABLE_SAVESTATE) \
 -DFASTER_UI=$(FASTER_UI) \
 -DEXTENDED_SCREEN=$(EXTENDED_SCREEN) \
--DDIALOGUES_LANGUAGE=$(LANGUAGE)
+-DDIALOGUES_LANGUAGE=$(DIALOGUES_LANGUAGE)
 
 
 # AS includes
@@ -508,7 +508,7 @@ zelda3/tables/zelda3_assets.dat: zelda3/tables/zelda3.sfc $(LOCALIZED_ROM_PATH) 
 		cd zelda3/tables; \
 		$(PYTHON) restool.py --extract-dialogue -r $(LOCALIZED_ROM); \
 		$(ECHO) "Extracting game resources with localized dialogues"; \
-		$(PYTHON) restool.py --extract-from-rom --languages=$(LANGUAGE) -r zelda3.sfc; \
+		$(PYTHON) restool.py --extract-from-rom --languages=$(DIALOGUES_LANGUAGE) -r zelda3.sfc; \
 	else \
 		$(ECHO) "Extracting game resources"; \
 		cd zelda3/tables; $(PYTHON) restool.py --extract-from-rom -r zelda3.sfc; \

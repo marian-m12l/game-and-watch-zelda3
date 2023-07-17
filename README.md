@@ -27,7 +27,7 @@ pip3 install -r zelda3/requirements.txt
 
 - Compile and flash (e.g. on internal flash bank 2, leaving 1MB (out of 16) for stock firmware at the beginning of extflash, french language)
 ```sh
-make INTFLASH_BANK=2 EXTFLASH_SIZE_MB=15 EXTFLASH_OFFSET=1048576 ADAPTER=jlink OPENOCD=/path/to/patched/openocd-git/bin/openocd GNW_TARGET=mario LANGUAGE=fr flash
+make INTFLASH_BANK=2 EXTFLASH_SIZE_MB=15 EXTFLASH_OFFSET=1048576 ADAPTER=jlink OPENOCD=/path/to/patched/openocd-git/bin/openocd GNW_TARGET=mario DIALOGUES_LANGUAGE=fr flash
 ```
 
 # Backing up and restoring save (SRAM)
