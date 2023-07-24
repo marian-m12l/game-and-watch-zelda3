@@ -160,7 +160,7 @@ SECTIONS
   ._dtcram_hot :
   {
     __dtcram_start__ = .;
-    
+
     . = ALIGN(4);
     __dtcram_hot_start__ = .;
     
@@ -189,8 +189,14 @@ SECTIONS
   . = ALIGN(4);
   ._spc_player_bss :
   {
+    . = ALIGN(4);
+    __dtcram_bss_start__ = .;
+
     build/spc_player.o (.bss .bss*)   /* 64 KB of APU RAM */
     *(.savestate_buffer)              /* DTCMRAM would probably be better used for something else */
+    
+    . = ALIGN(4);
+    __dtcram_bss_end__ = .;
   } >DTCMRAM
 
   

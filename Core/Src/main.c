@@ -1113,6 +1113,9 @@ int main(void)
   copy_areas[3] = copy_areas[2] - copy_areas[1];
   memcpy_no_check((uint32_t *) copy_areas[1], (uint32_t *) copy_areas[0], copy_areas[3]);
 
+  // Initialize DTCMRAM BSS section
+  memset((void*) &__dtcram_bss_start__, 0, &__dtcram_bss_end__ - &__dtcram_bss_start__);
+
   // Init audio buffers and SAI DMA
   set_audio_frequency(AUDIO_SAMPLE_RATE);
   memset(audiobuffer, 0, sizeof(audiobuffer));

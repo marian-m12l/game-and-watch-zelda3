@@ -27,6 +27,8 @@ extern uint32_t __itcram_hot_end__;
 extern uint32_t _sdtcram_hot;
 extern uint32_t __dtcram_hot_start__;
 extern uint32_t __dtcram_hot_end__;
+extern uint32_t __dtcram_bss_start__;
+extern uint32_t __dtcram_bss_end__;
 extern uint32_t _sahbram_hot;
 extern uint32_t __ahbram_hot_start__;
 extern uint32_t __ahbram_hot_end__;
