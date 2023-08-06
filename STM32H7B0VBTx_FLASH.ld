@@ -129,6 +129,22 @@ MEMORY
 /* Define output sections */
 SECTIONS
 {
+
+  
+  /* The startup code goes first into FLASH */
+    __flash_start__ = LOADADDR(.isr_vector);
+  .isr_vector :
+  {
+
+    . = ALIGN(4);
+    KEEP(*(.isr_vector)) /* Startup code */
+    . = ALIGN(4);
+    
+  } >RAM
+  
+  __load_to_ram__ = .;  /* Reserve space for .text to be loaded into beginning of ram */
+
+
   _sitcram_hot = LOADADDR(._itcram_hot);
   __extflash_start__ = LOADADDR(._itcram_hot);
   ._itcram_hot :
@@ -224,8 +240,9 @@ SECTIONS
   } >AHBRAM AT> EXTFLASH
 
 
+  __high_ram__ = 0x2402d000;
   _siramdata = LOADADDR(._ram_exec);
-  ._ram_exec :
+  ._ram_exec __high_ram__ :
   {
     __ram_start__ = .;
 
@@ -250,9 +267,10 @@ SECTIONS
 
 
   /* Uninitialized data section */
-  . = ALIGN(4);
-  .bss :
+  __high_ram__ = .;
+  .bss __high_ram__ :
   {
+    . = ALIGN(4);
     /* This is used by the startup in order to initialize the .bss secion */
     _sbss = .;         /* define a global symbol at bss start */
     __bss_start__ = _sbss;
@@ -267,7 +285,8 @@ SECTIONS
 
 
   /* User_heap_stack section, used to check that there is enough RAM left */
-  ._user_heap_stack :
+  __high_ram__ = .;
+  ._user_heap_stack __high_ram__ :
   {
     . = ALIGN(8);
     PROVIDE ( end = . );
@@ -317,21 +336,10 @@ SECTIONS
     __fbflash_end__ = .;
   } > FBFLASH
 
-  
-  /* The startup code goes first into FLASH */
-    __flash_start__ = LOADADDR(.isr_vector);
-  .isr_vector :
-  {
-
-    . = ALIGN(4);
-    KEEP(*(.isr_vector)) /* Startup code */
-    . = ALIGN(4);
-    
-  } >FLASH
-
 
   /* The rest of program code and other data goes into INTFLASH */
-  .text :
+  __low_ram__ = __load_to_ram__;
+  .text __low_ram__ :
   {
     . = ALIGN(4);
     *(.text)           /* .text sections (code) */
@@ -345,44 +353,53 @@ SECTIONS
 
     . = ALIGN(4);
     _etext = .;        /* define a global symbols at end of code */
-  } >FLASH
+  } >RAM
 
   /* Constant data goes into FLASH */
-  .rodata :
+  __low_ram__ = .;
+  .rodata __low_ram__ :
   {
     . = ALIGN(4);
     *(.rodata)         /* .rodata sections (constants, strings, etc.) */
     *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
     . = ALIGN(4);
-  } >FLASH
+  } >RAM
 
-  .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >FLASH
-  .ARM : {
+  __low_ram__ = .;
+  .ARM.extab  __low_ram__ : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >RAM
+  
+  __low_ram__ = .;
+  .ARM __low_ram__ : {
     __exidx_start = .;
     *(.ARM.exidx*)
     __exidx_end = .;
-  } >FLASH
+  } >RAM
 
-  .preinit_array     :
+  __low_ram__ = .;
+  .preinit_array    __low_ram__ :
   {
     PROVIDE_HIDDEN (__preinit_array_start = .);
     KEEP (*(.preinit_array*))
     PROVIDE_HIDDEN (__preinit_array_end = .);
-  } >FLASH
-  .init_array :
+  } >RAM
+  
+  __low_ram__ = .;
+  .init_array __low_ram__ :
   {
     PROVIDE_HIDDEN (__init_array_start = .);
     KEEP (*(SORT(.init_array.*)))
     KEEP (*(.init_array*))
     PROVIDE_HIDDEN (__init_array_end = .);
-  } >FLASH
-  .fini_array :
+  } >RAM
+  
+  __low_ram__ = .;
+  .fini_array __low_ram__ :
   {
     PROVIDE_HIDDEN (__fini_array_start = .);
     KEEP (*(SORT(.fini_array.*)))
     KEEP (*(.fini_array*))
     PROVIDE_HIDDEN (__fini_array_end = .);
-  } >FLASH
+  } >RAM
 
 
   /* used by the startup to initialize data */
@@ -401,7 +418,7 @@ SECTIONS
     _edata = .;        /* define a global symbol at data end */
     
     __dtcram_end__ = .;
-  } >DTCMRAM AT> FLASH
+  } >DTCMRAM AT> RAM
 
   __flash_end__ = __flash_start__ + SIZEOF(.isr_vector) + SIZEOF(.text) + SIZEOF(.rodata) + SIZEOF(.ARM.extab) + SIZEOF(.ARM) + SIZEOF(.preinit_array) + SIZEOF(.init_array) + SIZEOF(.fini_array) + SIZEOF(.data);
   
