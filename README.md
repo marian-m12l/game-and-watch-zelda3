@@ -101,3 +101,24 @@ Edit the `FEATURE_*` values in `Makefile` to enable additional features and bug 
 | `FEATURE_CANCEL_BIRD_TRAVEL` | Allow bird travel to be cancelled by hitting the X key. |
 | `FEATURE_GAME_CHANGING_BUG_FIXES` | Enable some more advanced zelda bugfixes that change game behavior. |
 | `FEATURE_SWITCH_LR_LIMIT` | Enable this to limit the ItemSwitchLR item cycling to the first 4 items. |
+
+## Button bindings
+
+| Description | Binding on Mario units | Binding on Zelda units |
+| ----------- | ---------------------- | ---------------------- |
+| `A` button (Pegasus Boots / Interacting) | `A` | `A` |
+| `B` button (Sword) | `B` | `B` |
+| `X` button (Show Map) | `TIME` | `PAUSE` |
+| `Y` button (Use Item) | `PAUSE` | `SELECT` |
+| `Select` button (Save Screen) | `GAME + TIME` | `TIME` |
+| `Start` button (Item Selection Screen) | `GAME + PAUSE` | `START` |
+| `L` button (Quick-swapping, if enabled) | `-` | `GAME + SELECT` |
+| `R` button (Quick-swapping, if enabled) | `-` | `GAME + START` |
+| Save savestate, if enabled | `GAME + A` | `GAME + A` |
+| Load savestate, if enabled | `GAME + B` | `GAME + B` |
+| Decrease Volume | `GAME + Left` | `GAME + Left` |
+| Increase Volume | `GAME + Right` | `GAME + Right` |
+| Decrease Brightness | `GAME + Down` | `GAME + Down` |
+| Increase Brightness | `GAME + Up` | `GAME + Up` |
+| Power Off | `POWER`| `POWER` |
+| Power Off without saving savestate | `POWER + PAUSE`| `POWER + PAUSE` |
