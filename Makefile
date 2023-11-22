@@ -210,6 +210,10 @@ zelda3/third_party/opus-1.3.1-stripped/opus_decoder_amalgam.c \
 zelda3/tile_detect.c \
 zelda3/overlord.c \
 
+# ASM sources
+ASM_SOURCES =  \
+startup_bootloader_stm32h7b0xx.s
+
 
 # Version and URL for the STM32CubeH7 SDK
 SDK_VERSION ?= v1.8.0
@@ -450,8 +454,8 @@ download_sdk: $(SDK_HEADERS) $(SDK_C_SOURCES) $(SDK_ASM_SOURCES)
 OBJECTS = $(addprefix $(BUILD_DIR)/,$(notdir $(C_SOURCES:.c=.o) $(SDK_C_SOURCES:.c=.o)))
 vpath %.c $(sort $(dir $(C_SOURCES) $(SDK_C_SOURCES)))
 # list of ASM program objects
-OBJECTS += $(addprefix $(BUILD_DIR)/,$(notdir $(SDK_ASM_SOURCES:.s=.o)))
-vpath %.s $(sort $(dir $(SDK_ASM_SOURCES)))
+OBJECTS += $(addprefix $(BUILD_DIR)/,$(notdir $(ASM_SOURCES:.s=.o) $(SDK_ASM_SOURCES:.s=.o)))
+vpath %.s $(sort $(dir $(ASM_SOURCES) $(SDK_ASM_SOURCES)))
 
 
 
@@ -522,40 +526,54 @@ $(BUILD_DIR):
 OPENOCD ?= openocd
 ADAPTER ?= jlink
 OCDIFACE ?= scripts/interface_$(ADAPTER).cfg
-
-#flash: $(BUILD_DIR)/$(TARGET).bin
-#	dd if=$(BUILD_DIR)/$(TARGET).bin of=$(BUILD_DIR)/$(TARGET)_flash.bin bs=1024 count=128
-#	$(OPENOCD) -f $(OCDIFACE) -c "transport select hla_swd" -f "target/stm32h7x.cfg" -c "reset_config none; program $(BUILD_DIR)/$(TARGET)_flash.bin 0x08000000 verify reset exit"
-
-#.PHONY: flash
+GNWMANAGER ?= gnwmanager
+CAT ?= cat
+TAMP ?= tamp
 
 
 $(BUILD_DIR)/$(TARGET)_extflash.bin: $(BUILD_DIR)/$(TARGET).elf | $(BUILD_DIR)
-#	$(V)$(ECHO) [ BIN ] $(notdir $@)
 	$(V)$(BIN) -j ._itcram_hot -j ._dtcram_hot -j ._ahbram_hot -j ._ram_exec -j ._extflash $< $(BUILD_DIR)/$(TARGET)_extflash.bin
 
 $(BUILD_DIR)/$(TARGET)_intflash.bin: $(BUILD_DIR)/$(TARGET).elf | $(BUILD_DIR)
-#	$(V)$(ECHO) [ BIN ] $(notdir $@)
-	$(V)$(BIN) -j .isr_vector -j .text -j .rodata -j .ARM.extab -j .preinit_array -j .init_array -j .fini_array -j .data $< $(BUILD_DIR)/$(TARGET)_intflash.bin
+	$(V)$(BIN) -j .isr_vector_bootloader -j .text.bootloader -j .rodata.bootloader -j .data.bootloader $< $(BUILD_DIR)/$(TARGET)_intflash.bin
+
+$(BUILD_DIR)/$(TARGET)_ram_app.bin: $(BUILD_DIR)/$(TARGET).elf | $(BUILD_DIR)
+	$(V)$(BIN) -j .isr_vector_ram -j .text -j .rodata -j .ARM.extab -j .preinit_array -j .init_array -j .fini_array -j .data $< $(BUILD_DIR)/$(TARGET)_ram_app.bin
+
+$(BUILD_DIR)/$(TARGET)_ram_app.bin.tamp: $(BUILD_DIR)/$(TARGET)_ram_app.bin | $(BUILD_DIR)
+	$(V)$(TAMP) compress $< -o $(BUILD_DIR)/$(TARGET)_ram_app.bin.tamp
+
+$(BUILD_DIR)/$(TARGET)_intflash_with_payload.bin: $(BUILD_DIR)/$(TARGET)_intflash.bin $(BUILD_DIR)/$(TARGET)_ram_app.bin | $(BUILD_DIR)
+	$(V)$(CAT) $(BUILD_DIR)/$(TARGET)_intflash.bin $(BUILD_DIR)/$(TARGET)_ram_app.bin > $(BUILD_DIR)/$(TARGET)_intflash_with_payload.bin
 
 
-
-
-# Programs the internal flash using a new OpenOCD instance
-flash_intflash: $(BUILD_DIR)/$(TARGET)_intflash.bin
-	$(OPENOCD) -f $(OCDIFACE) -c "init; halt; program $< $(INTFLASH_ADDRESS) $(PROGRAM_VERIFY); exit"
+flash_intflash: $(BUILD_DIR)/$(TARGET)_intflash_with_payload.bin
+	$(GNWMANAGER) flash $(INTFLASH_ADDRESS) $< -- start $(INTFLASH_ADDRESS)
 .PHONY: flash_intflash
 
 flash_extflash: $(BUILD_DIR)/$(TARGET)_extflash.bin
-	$(OPENOCD) -f $(OCDIFACE) -c "init; halt; program $< $(EXTFLASH_ADDRESS) $(PROGRAM_VERIFY); exit"
+	@$(GNWMANAGER) flash ext $< --offset=$(EXTFLASH_OFFSET) -- start $(INTFLASH_ADDRESS)
 .PHONY: flash_extflash
 
+flash_ram_app: $(BUILD_DIR)/$(TARGET)_ram_app.bin.tamp
+	$(GNWMANAGER) push /apps/$(TARGET).bin.tamp $(BUILD_DIR)/$(TARGET)_ram_app.bin.tamp \
+.PHONY: flash_intflash
+
 # Programs both the external and internal flash.
-flash:
-	$(V)$(MAKE) flash_extflash
-	$(V)$(MAKE) flash_intflash
-	$(V)$(MAKE) reset_dbgmcu 
+flash: $(BUILD_DIR)/$(TARGET)_intflash_with_payload.bin $(BUILD_DIR)/$(TARGET)_extflash.bin
+	@$(GNWMANAGER) flash $(INTFLASH_ADDRESS) $(BUILD_DIR)/$(TARGET)_intflash_with_payload.bin \
+		-- flash ext $(BUILD_DIR)/$(TARGET)_extflash.bin --offset=$(EXTFLASH_OFFSET) \
+		-- start $(INTFLASH_ADDRESS) \
+		$(RESET_DBGMCU_CMD)
 .PHONY: flash
+
+# Programs both the external flash and application in filesystem.
+flash_as_app: $(BUILD_DIR)/$(TARGET)_ram_app.bin.tamp $(BUILD_DIR)/$(TARGET)_extflash.bin
+	@$(GNWMANAGER) push /apps/$(TARGET).bin.tamp $(BUILD_DIR)/$(TARGET)_ram_app.bin.tamp \
+		-- flash ext $(BUILD_DIR)/$(TARGET)_extflash.bin --offset=$(EXTFLASH_OFFSET) \
+		-- start bank1 \
+		$(RESET_DBGMCU_CMD)
+.PHONY: flash_as_app
 
 
 reset:
