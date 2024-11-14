@@ -1,3 +1,7 @@
+> [!WARNING]
+> :warning: This port is now part of retro-go. Please follow [these instructions](https://github.com/sylverb/game-and-watch-retro-go?tab=readme-ov-file#the-legend-of-zelda-a-link-to-the-past), unless you want to flash Zelda 3 separately. :warning:
+
+
 # Port of reverse engineered zelda3 for the Game and Watch
 
 All credits for reverse engineering goes to https://github.com/snesrev/zelda3
